@@ -1,0 +1,3 @@
+(library
+ (public_name dir_test.lib2)
+ (name lib2))

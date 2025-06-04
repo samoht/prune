@@ -1,0 +1,3 @@
+(library
+ (public_name spec_test.lib)
+ (name testlib))

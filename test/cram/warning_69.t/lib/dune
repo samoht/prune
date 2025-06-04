@@ -1,0 +1,3 @@
+(library
+ (name field_lib)
+ (flags :standard -w +69 -warn-error +69))

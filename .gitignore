@@ -1,0 +1,16 @@
+# OCaml build artifacts
+_build/
+_opam/
+*.install
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS files
+.DS_Store
+
+# Log files
+logs.txt

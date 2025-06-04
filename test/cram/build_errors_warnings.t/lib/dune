@@ -1,0 +1,3 @@
+(library
+ (name error_lib)
+ (flags :standard -w +32+33+69-40))

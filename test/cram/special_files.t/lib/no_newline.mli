@@ -1,0 +1,1 @@
+val no_newline : unit -> unit

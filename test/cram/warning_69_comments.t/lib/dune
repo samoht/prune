@@ -1,0 +1,3 @@
+(library
+ (name testlib)
+ (flags -w +69 -warn-error +69))

@@ -1,0 +1,3 @@
+(library
+ (name long_lines_test)
+ (flags :standard -w -27))

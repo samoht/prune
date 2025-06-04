@@ -1,0 +1,4 @@
+(executable
+ (public_name clean_main)
+ (name main)
+ (libraries clean_test))

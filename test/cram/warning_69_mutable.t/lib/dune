@@ -1,0 +1,3 @@
+(library
+ (name issue)
+ (flags :standard -w +69 -warn-error +69))

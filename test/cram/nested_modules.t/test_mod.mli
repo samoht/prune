@@ -1,0 +1,1 @@
+module M : sig val foo : int -> int end

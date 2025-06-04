@@ -1,0 +1,3 @@
+(library
+ (name testlib)
+ (modules testlib))

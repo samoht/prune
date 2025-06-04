@@ -1,0 +1,1 @@
+module M = struct let foo x = x + 1 end
