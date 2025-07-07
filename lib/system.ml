@@ -146,82 +146,67 @@ let stop_merlin_server root_dir =
 
 (* Run merlin with proper working directory context *)
 let get_relative_path root_dir file_path =
-  match Fpath.relativize ~root:(Fpath.v root_dir) (Fpath.v file_path) with
-  | Some rel ->
-      let rel_str = Fpath.to_string rel in
-      Log.debug (fun m ->
-          m "Relativized %s -> %s (root: %s)" file_path rel_str root_dir);
-      rel_str
-  | None ->
-      Log.debug (fun m ->
-          m "Could not relativize %s (root: %s)" file_path root_dir);
-      file_path
+  let fpath = Fpath.v file_path in
+  (* If the path is already relative, just return it *)
+  if Fpath.is_rel fpath then file_path
+  else
+    match Fpath.relativize ~root:(Fpath.v root_dir) fpath with
+    | Some rel ->
+        let rel_str = Fpath.to_string rel in
+        Log.debug (fun m ->
+            m "Relativized %s -> %s (root: %s)" file_path rel_str root_dir);
+        rel_str
+    | None ->
+        Log.debug (fun m ->
+            m "Could not relativize %s (root: %s)" file_path root_dir);
+        file_path
 
 (* Build merlin shell command *)
 let build_merlin_command root_dir relative_path query =
   let merlin_cmd =
     match !merlin_mode with `Single -> "single" | `Server -> "server"
   in
-  (* Use shell command to run merlin in the correct directory CRITICAL: We MUST
-     use a shell with 'cd' to ensure merlin runs with the correct working
-     directory and picks up the proper opam environment.
-
-     The command format is: cd <root> && ocamlmerlin server <query> -filename
-     <file> < <file> This feeds the file content to merlin via stdin
-     redirection *)
-  (* Only cd if not in current directory *)
-  if root_dir = "." then
-    Fmt.str "ocamlmerlin %s %s -filename %s < %s" merlin_cmd query
-      (Filename.quote relative_path)
-      (Filename.quote relative_path)
-  else
-    Fmt.str "cd %s && ocamlmerlin %s %s -filename %s < %s"
-      (Filename.quote root_dir) merlin_cmd query
-      (Filename.quote relative_path)
-      (Filename.quote relative_path)
+  (* Build the full path for stdin redirection *)
+  let full_path =
+    if root_dir = "." then relative_path
+    else Filename.concat root_dir relative_path
+  in
+  (* Use relative_path for -filename (merlin expects this) and full_path for
+     stdin redirection *)
+  Fmt.str "ocamlmerlin %s %s -filename %s < %s" merlin_cmd query
+    (Filename.quote relative_path)
+    (Filename.quote full_path)
 
 (* Execute merlin command and parse output *)
 let execute_merlin_command query_type shell_cmd =
   Log.debug (fun m -> m "Running merlin %s: %s" query_type shell_cmd);
-  (* Add timeout to prevent hanging - use timeout command if available *)
-  let timeout_cmd =
-    (* Check if timeout command is available (try gtimeout first for macOS) *)
-    match OS.Cmd.run_out Cmd.(v "which" % "gtimeout") |> OS.Cmd.out_string with
-    | Ok (_, _) ->
-        (* Use gtimeout (GNU coreutils on macOS) with 10 second limit *)
-        Fmt.str "gtimeout 10 %s" shell_cmd
-    | Error _ -> (
-        (* Try standard timeout command *)
-        match
-          OS.Cmd.run_out Cmd.(v "which" % "timeout") |> OS.Cmd.out_string
-        with
-        | Ok (_, _) ->
-            (* Use timeout command with 10 second limit *)
-            Fmt.str "timeout 10 %s" shell_cmd
-        | Error _ ->
-            (* No timeout available, use original command *)
-            Log.debug (fun m ->
-                m "No timeout command available, running without timeout");
-            shell_cmd)
-  in
-  let cmd = Cmd.(v "sh" % "-c" % timeout_cmd) in
+  (* Run merlin directly without timeout wrapper *)
+  let cmd = Cmd.(v "sh" % "-c" % shell_cmd) in
   match OS.Cmd.run_out ~err:OS.Cmd.err_null cmd |> OS.Cmd.out_string with
   | Ok (output_str, (_, status)) -> (
       match status with
-      | `Exited 124 ->
-          (* timeout command returns 124 when it times out *)
-          Log.warn (fun m ->
-              m "Merlin %s timed out after 10 seconds" query_type);
-          `Null
-      | _ -> (
+      | `Exited 0 -> (
           try
-            let json = Yojson.Safe.from_string output_str in
-            Log.debug (fun m -> m "Merlin %s completed successfully" query_type);
-            json
-          with _ ->
+            if output_str = "" then (
+              Log.debug (fun m ->
+                  m "Merlin %s returned empty output" query_type);
+              `Null)
+            else
+              let json = Yojson.Safe.from_string output_str in
+              Log.debug (fun m ->
+                  m "Merlin %s completed successfully" query_type);
+              json
+          with exn ->
             Log.debug (fun m ->
-                m "Failed to parse merlin %s output: %s" query_type output_str);
-            `Null))
+                m "Failed to parse merlin %s output: %s (exception: %s)"
+                  query_type output_str (Printexc.to_string exn));
+            `Null)
+      | `Exited n ->
+          Log.debug (fun m -> m "Merlin %s exited with code %d" query_type n);
+          `Null
+      | `Signaled n ->
+          Log.debug (fun m -> m "Merlin %s killed by signal %d" query_type n);
+          `Null)
   | Error (`Msg err) ->
       Log.debug (fun m -> m "Merlin %s failed: %s" query_type err);
       `Null

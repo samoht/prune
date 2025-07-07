@@ -11,7 +11,7 @@ license: "ISC"
 homepage: "https://github.com/samoht/prune"
 bug-reports: "https://github.com/samoht/prune/issues"
 depends: [
-  "ocaml" {>= "4.08"}
+  "ocaml" {>= "5.3"}
   "dune" {>= "3.0"}
   "merlin"
   "yojson" {>= "1.6"}
