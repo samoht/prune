@@ -84,79 +84,58 @@ let find_trailing_comment_end cache file end_line_idx =
   | Some max_lines -> (
       if end_line_idx + 1 >= max_lines then end_line_idx
       else
-        (* Check if next line starts a comment *)
+        (* First check if there's a blank line immediately after - if so,
+           stop *)
         match Cache.get_line cache file (end_line_idx + 2) with
         | None -> end_line_idx
         | Some next_line ->
-            let trimmed = String.trim next_line in
-            if starts_with trimmed "(*" then
-              (* Found a comment, check if it's complete on this line *)
-              let rec count_delimiters s i starts ends =
-                if i >= String.length s - 1 then (starts, ends)
-                else if s.[i] = '(' && s.[i + 1] = '*' then
-                  count_delimiters s (i + 2) (starts + 1) ends
-                else if s.[i] = '*' && s.[i + 1] = ')' then
-                  count_delimiters s (i + 2) starts (ends + 1)
-                else count_delimiters s (i + 1) starts ends
-              in
-              let initial_starts, initial_ends =
-                count_delimiters next_line 0 0 0
-              in
-              let initial_depth = initial_starts - initial_ends in
+            if is_empty_line next_line then
+              (* Blank line after item - any following comments belong to next
+                 item *)
+              end_line_idx
+            else
+              let trimmed = String.trim next_line in
+              if starts_with trimmed "(*" then
+                (* Found a comment immediately after (no blank line) *)
+                let rec count_delimiters s i starts ends =
+                  if i >= String.length s - 1 then (starts, ends)
+                  else if s.[i] = '(' && s.[i + 1] = '*' then
+                    count_delimiters s (i + 2) (starts + 1) ends
+                  else if s.[i] = '*' && s.[i + 1] = ')' then
+                    count_delimiters s (i + 2) starts (ends + 1)
+                  else count_delimiters s (i + 1) starts ends
+                in
+                let initial_starts, initial_ends =
+                  count_delimiters next_line 0 0 0
+                in
+                let initial_depth = initial_starts - initial_ends in
 
-              (* If the comment is complete on this line, just return that
-                 line *)
-              if initial_depth = 0 && initial_ends > 0 then
-                end_line_idx + 1 (* Include the comment line *)
-              else
-                (* Comment continues to next lines, scan to find its end *)
-                let rec scan_forward line_idx depth last_comment_end =
-                  Log.debug (fun m ->
-                      m
-                        "scan_forward: line_idx=%d, depth=%d, \
-                         last_comment_end=%d"
-                        line_idx depth last_comment_end);
-                  if line_idx >= max_lines then last_comment_end
-                  else
-                    match Cache.get_line cache file (line_idx + 1) with
-                    | None -> last_comment_end
-                    | Some line ->
-                        let trimmed_line = String.trim line in
-                        Log.debug (fun m ->
-                            m "scan_forward: line %d content='%s', trimmed='%s'"
-                              (line_idx + 1) line trimmed_line);
-                        (* If we hit an empty line after closing a comment,
-                           stop *)
-                        if depth = 0 && trimmed_line = "" then (
-                          Log.debug (fun m ->
-                              m "scan_forward: stopping at empty line");
-                          last_comment_end)
-                        else
-                          let rec count_delimiters s i starts ends =
-                            if i >= String.length s - 1 then (starts, ends)
-                            else if s.[i] = '(' && s.[i + 1] = '*' then
-                              count_delimiters s (i + 2) (starts + 1) ends
-                            else if s.[i] = '*' && s.[i + 1] = ')' then
-                              count_delimiters s (i + 2) starts (ends + 1)
-                            else count_delimiters s (i + 1) starts ends
-                          in
+                (* If the comment is complete on this line, just return that
+                   line *)
+                if initial_depth = 0 && initial_ends > 0 then
+                  end_line_idx + 1 (* Include the comment line *)
+                else
+                  (* Comment continues to next lines, scan to find its end *)
+                  let rec scan_forward line_idx depth last_comment_end =
+                    if line_idx >= max_lines then last_comment_end
+                    else
+                      match Cache.get_line cache file (line_idx + 1) with
+                      | None -> last_comment_end
+                      | Some line ->
                           let starts, ends = count_delimiters line 0 0 0 in
                           let new_depth = depth + starts - ends in
                           let new_last_end =
                             if new_depth = 0 && ends > 0 then line_idx
                             else last_comment_end
                           in
-                          if
-                            new_depth <= 0 && trimmed_line <> ""
-                            && not (starts_with trimmed_line "(*")
-                          then
-                            (* Non-empty, non-comment line after comment end *)
-                            last_comment_end
+                          if new_depth <= 0 then
+                            (* Comment ended *)
+                            new_last_end
                           else
                             scan_forward (line_idx + 1) new_depth new_last_end
-                in
-                scan_forward (end_line_idx + 1) initial_depth end_line_idx
-            else end_line_idx)
+                  in
+                  scan_forward (end_line_idx + 1) initial_depth end_line_idx
+              else end_line_idx)
 
 (* Extend location bounds to include source-level comments *)
 let extend_location_with_comments cache file location =

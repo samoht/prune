@@ -10,4 +10,5 @@ let () =
       Test_removal_field.tests;
       Test_removal_parsing.tests;
       Test_cache.tests;
+      ("Comments", Test_comments.tests);
     ]
