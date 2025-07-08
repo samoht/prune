@@ -36,6 +36,10 @@ Run prune with --force to remove unused values:
 
 Verify exports were removed:
   $ cat lib/test.mli
+  
+  
 
 Verify implementations were also cleaned:
   $ cat lib/test.ml
+  
+  

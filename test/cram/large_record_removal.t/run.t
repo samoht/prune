@@ -44,6 +44,34 @@ Verify the large record type was completely removed:
   (** This is a used function *)
   val used_function : int -> int
   
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   type used_type = string
 
 This shows proper iterative behavior: exports are removed from .mli files first,

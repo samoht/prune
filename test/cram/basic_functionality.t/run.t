@@ -66,7 +66,15 @@ Verify unused items were removed from interface:
   (** A value that is used by main.ml *)
   val used_value : int -> int
   
+  
+  
+  
+  
   type used_type = int
+  
+  
+  
+  
   
   exception Used_error
   
@@ -157,7 +165,11 @@ Verify unused items were removed from implementation:
   $ cat lib/test_lib.ml
   let used_value x = x * 2
   
+  
+  
   type used_type = int
+  
+  
   
   exception Used_error
   

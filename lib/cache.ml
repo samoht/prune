@@ -156,25 +156,6 @@ let get_ast cache file =
               | None -> err "Failed to cache AST for %s" file)
           | Error e -> Error e))
 
-(* Consolidate consecutive blank lines in file content *)
-let consolidate_blank_lines lines =
-  let result = ref [] in
-  let last_was_blank = ref false in
-
-  Array.iter
-    (fun line ->
-      let is_blank = String.trim line = "" in
-      if is_blank then (
-        if not !last_was_blank then (
-          result := line :: !result;
-          last_was_blank := true (* else skip - we already have a blank line *)))
-      else (
-        result := line :: !result;
-        last_was_blank := false))
-    lines;
-
-  Array.of_list (List.rev !result)
-
 (* Write file to disk *)
 let write cache file =
   match Hashtbl.find_opt cache.files file with
@@ -201,21 +182,18 @@ let write cache file =
 
       (* Reverse to show in chronological order *)
 
-      (* Consolidate consecutive blank lines before writing *)
-      let consolidated_lines = consolidate_blank_lines entry.lines in
-
       (* Clear diffs after writing *)
       entry.diffs <- [];
       let result =
         OS.File.with_output (Fpath.v file)
           (fun oc () ->
-            (* Write consolidated lines *)
+            (* Write all lines, preserving line numbers *)
             Array.iteri
               (fun i line ->
                 oc (Some (Bytes.of_string line, 0, String.length line));
-                if i < Array.length consolidated_lines - 1 then
+                if i < Array.length entry.lines - 1 then
                   oc (Some (Bytes.of_string "\n", 0, 1)))
-              consolidated_lines;
+              entry.lines;
             Ok ())
           ()
       in

@@ -20,30 +20,27 @@ Run prune to clean all warnings:
   
     Iteration 2:
     Removed 2 exports
-  prune: [WARNING] Could not find value binding at lib/mixed.ml:6:4 (No value binding found at position), falling back to item detection
-  prune: internal error, uncaught exception:
-         Failure("AST-based item bounds detection failed: No structure item found at position")
-         
-  [125]
+    Fixed 2 errors
+  
+    Iteration 3:
+    Fixed 1 error
+  
+    Iteration 4:
+  ✓ No more unused code found
+  
+  Summary: removed 2 exports and 7 implementations in 3 iterations (9 lines total)
 
 Verify cleaned code is empty:
   $ cat lib/mixed.ml
   
-  open List    (* Used *)
   
-  type used_type = int
   
-  let used_fun x = map (fun y -> y + 1) x
+  
+  
+  
+  
+  
+  
 
 Build should now succeed:
   $ dune build
-  File "lib/mixed.ml", line 4, characters 0-20:
-  4 | type used_type = int
-      ^^^^^^^^^^^^^^^^^^^^
-  Error (warning 34 [unused-type-declaration]): unused type used_type.
-  
-  File "lib/mixed.ml", line 6, characters 4-12:
-  6 | let used_fun x = map (fun y -> y + 1) x
-          ^^^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value used_fun.
-  [1]

@@ -49,8 +49,17 @@ Verify cleanup result:
   $ cat lib/cascadelib.mli
   (** Main entry point *)
   val main : unit -> unit
+  
+  
 
   $ cat lib/cascadelib.ml
+  
+  
+  
+  
+  
+  
+  
   
   let main () = 
     Printf.printf "Main called\n"

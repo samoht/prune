@@ -45,6 +45,29 @@ Verify the result:
   (** This function is actually used *)
   val used : unit -> unit
   
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   val used_with_docs : int -> int
   (* This comment stays too *)
   

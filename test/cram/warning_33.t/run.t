@@ -34,10 +34,13 @@ Run prune to fix all unused opens:
     Fixed 4 errors
   
     Iteration 2:
-  prune: internal error, uncaught exception:
-         Failure("AST-based item bounds detection failed: No signature item found at position")
-         
-  [125]
+    Removed 1 exports
+    Fixed 1 error
+  
+    Iteration 3:
+  ✓ No more unused code found
+  
+  Summary: removed 1 export and 5 implementations in 2 iterations (6 lines total)
 
 Check that unused opens were removed from .ml files:
   $ cat src/main.ml | grep "open"

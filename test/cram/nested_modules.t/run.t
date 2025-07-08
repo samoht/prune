@@ -161,11 +161,12 @@ Let's apply prune's changes:
     Fixed 15 errors
   
     Iteration 2:
-  prune: [WARNING] Could not find value binding at test_lib.ml:12:8 (No value binding found at position), falling back to item detection
-  prune: [WARNING] Could not find value binding at test_lib.ml:10:8 (No value binding found at position), falling back to item detection
     Fixed 3 errors
   
     Iteration 3:
+    Fixed 1 error
+  
+    Iteration 4:
   Build failed with 0 errors - full output:
   File "main.ml", line 3, characters 2-23:
   3 |   Test_lib.Top.top_used ();
@@ -177,18 +178,18 @@ Check what happened to Store module in the .mli:
 
   $ diff -u test_lib.mli.bak test_lib.mli | grep -A3 -B3 "Store\|get\|set\|update" || true
   -  type unused_type = int
-  -
+   
   -  (** Internal store module - functions only used within this module *)
   -  module Store : sig
   -    val get : unit -> int
   -    val set : int -> unit
   -    val update : (int -> int) -> unit
   -  end
-  -
+   
   -  (** Functions that use Store internally *)
   -  val get_count : unit -> int
   -  val increment : unit -> unit
-  -
+   
   -  (** First level module *)
 
 The Store module's functions were removed from the .mli. Now let's see if this
@@ -213,7 +214,7 @@ Now run prune again to "fix" these warnings:
 Let's check if the Store module was completely removed:
 
   $ grep -n "module Store" test_lib.ml || echo "Store module was removed!"
-  Store module was removed!
+  12:  module Store = struct
 
 Verify the build is now broken:
 

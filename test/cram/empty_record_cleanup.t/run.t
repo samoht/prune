@@ -19,10 +19,18 @@ Run prune with --force:
     Fixed 4 errors
   
     Iteration 2:
-  prune: internal error, uncaught exception:
-         Failure("Field info detection failed: Field not found at position")
-         
-  [125]
+    Fixed 1 error
+  
+    Iteration 3:
+    Fixed 1 error
+  
+    Iteration 4:
+    Fixed 1 error
+  
+    Iteration 5:
+  ✓ No more unused code found
+  
+  Summary: removed 0 exports and 7 implementations in 4 iterations (7 lines total)
 
 Check what was changed:
   $ cat lib/user.ml
@@ -32,9 +40,15 @@ Check what was changed:
     type t
     val create_user : unit -> t
   end = struct
-    type stats = unit
+  
+  
+  
+  
   
     type t = unit
   
-    let create_user () = { name = "test"; stats = { login_count = 0; last_login = 0.0 } }
+  
+  
+  
+    let create_user () = ()
   end

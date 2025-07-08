@@ -49,11 +49,12 @@ Run iterative cleanup:
   
     Iteration 2:
     Removed 7 exports
-  prune: [WARNING] Could not find value binding at lib/testlib.ml:24:4 (No value binding found at position), falling back to item detection
-  prune: internal error, uncaught exception:
-         Failure("AST-based item bounds detection failed: No structure item found at position")
-         
-  [125]
+    Fixed 8 errors
+  
+    Iteration 3:
+  ✓ No more unused code found
+  
+  Summary: removed 7 exports and 10 implementations in 2 iterations (27 lines total)
 
 The cleanup removed:
 - unused_export and its helper
@@ -70,91 +71,11 @@ The remaining exports are:
 
 Build should now succeed:
   $ dune build
-  File "lib/testlib.ml", line 2, characters 4-17:
-  2 | let unused_export () = 42
-          ^^^^^^^^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value unused_export.
-  
-  File "lib/testlib.ml", line 5, characters 8-14:
-  5 | let rec chain1 x = chain2 (x + 1)
-              ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain1.
-  
-  File "lib/testlib.ml", line 6, characters 4-10:
-  6 | and chain2 x = chain3 (x * 2)
-          ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain2.
-  
-  File "lib/testlib.ml", line 7, characters 4-10:
-  7 | and chain3 x = chain4 (x - 1)
-          ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain3.
-  
-  File "lib/testlib.ml", line 8, characters 4-10:
-  8 | and chain4 x = chain5 (x / 2)
-          ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain4.
-  
-  File "lib/testlib.ml", line 9, characters 4-10:
-  9 | and chain5 x = x
-          ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain5.
-  
-  File "lib/testlib.ml", line 18, characters 4-19:
-  18 | let used_internally x = x * 2
-           ^^^^^^^^^^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value used_internally.
-  
-  File "lib/testlib.ml", line 24, characters 4-21:
-  24 | let standalone_unused () = "never used"
-           ^^^^^^^^^^^^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value standalone_unused.
-  [1]
 
 Test specific path analysis:
   $ prune clean lib/ --dry-run
   Analyzing 1 .mli file
-  Error: Build failed:
-  File "lib/testlib.ml", line 2, characters 4-17:
-  2 | let unused_export () = 42
-          ^^^^^^^^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value unused_export.
-  
-  File "lib/testlib.ml", line 5, characters 8-14:
-  5 | let rec chain1 x = chain2 (x + 1)
-              ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain1.
-  
-  File "lib/testlib.ml", line 6, characters 4-10:
-  6 | and chain2 x = chain3 (x * 2)
-          ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain2.
-  
-  File "lib/testlib.ml", line 7, characters 4-10:
-  7 | and chain3 x = chain4 (x - 1)
-          ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain3.
-  
-  File "lib/testlib.ml", line 8, characters 4-10:
-  8 | and chain4 x = chain5 (x / 2)
-          ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain4.
-  
-  File "lib/testlib.ml", line 9, characters 4-10:
-  9 | and chain5 x = x
-          ^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value chain5.
-  
-  File "lib/testlib.ml", line 18, characters 4-19:
-  18 | let used_internally x = x * 2
-           ^^^^^^^^^^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value used_internally.
-  
-  File "lib/testlib.ml", line 24, characters 4-21:
-  24 | let standalone_unused () = "never used"
-           ^^^^^^^^^^^^^^^^^
-  Error (warning 32 [unused-value-declaration]): unused value standalone_unused.
-  [1]
+    No unused exports found!
 
 Even when analyzing only lib/, prune correctly identifies that all
 remaining exports are used elsewhere in the project.

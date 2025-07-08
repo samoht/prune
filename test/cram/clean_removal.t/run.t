@@ -39,6 +39,11 @@ Verify the cleaned .mli file:
   $ cat lib/cleanlib.mli
   (** Function that will be used *)
   val used_function : int -> int
+  
+  
+  
+  
+  
 
 Verify the project still works:
 
