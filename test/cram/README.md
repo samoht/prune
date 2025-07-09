@@ -82,7 +82,7 @@ When a test is failing and you need to debug it:
 
 2. **Run the test to see the output**:
    ```bash
-   $ dune runtest test/cram/module_alias_signature.t
+   $ dune build @test/cram/module_alias_signature
    ```
 
 3. **The test will fail but show you the actual debug output**, which helps you understand what's happening
@@ -128,6 +128,27 @@ Each test should:
    mkdir -p test/cram/my_feature.t/{lib,bin}
    ```
 
+## Running Cram Tests
+
+To run a specific cram test:
+```bash
+dune build @test/cram/<test_name>
+```
+
+To run with debug output:
+```bash
+PRUNE_VERBOSE=debug dune build @test/cram/<test_name>
+```
+
+Examples:
+```bash
+# Run the doc_comments test
+dune build @test/cram/doc_comments
+
+# Run with debug logging
+PRUNE_VERBOSE=debug dune build @test/cram/doc_comments
+```
+
 2. **Create the project files**:
    ```bash
    # Create dune-project
@@ -165,7 +186,7 @@ Each test should:
 
 5. **Run and verify the test**:
    ```bash
-   dune test test/cram/my_feature.t
+   dune build @test/cram/my_feature
    ```
 
 6. **Promote the test output if correct**:
