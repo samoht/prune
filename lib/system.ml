@@ -307,6 +307,33 @@ let build_project_and_index root_dir ctx =
         Error (`Build_failed ctx)
 
 (* Analyze the last build result and classify the error type *)
+(* Check if a warning type is fixable by prune *)
+let is_fixable_warning warning_type =
+  match warning_type with
+  | Types.Signature_mismatch | Types.Unbound_field -> true
+  | Types.Unused_value -> true (* Warning 32 is fixable *)
+  | Types.Unused_type -> true (* Warning 34 is fixable *)
+  | Types.Unused_open -> true (* Warning 33 is fixable *)
+  | Types.Unused_constructor -> true (* Warning 37 is fixable *)
+  | Types.Unused_field -> true (* Warning 69 is fixable *)
+  | Types.Unnecessary_mutable -> true (* Warning 69 mutable - fixable *)
+  | _ -> false
+
+(* Extract fixable errors from build result *)
+let extract_fixable_errors result =
+  let parsed_errors : Types.warning_info list = result.Types.warnings in
+  let fixable_errors =
+    List.filter (fun w -> is_fixable_warning w.Types.warning_type) parsed_errors
+  in
+  Log.debug (fun m -> m "Found %d fixable errors" (List.length fixable_errors));
+  fixable_errors
+
+(* Create truncated output excerpt for debugging *)
+let create_output_excerpt result =
+  if String.length result.Types.output > 1000 then
+    String.sub result.Types.output 0 1000 ^ "\n[... output truncated ...]"
+  else result.Types.output
+
 let classify_build_error ctx =
   match Types.get_last_build_result ctx with
   | None -> Types.Other_errors "No build result available"
@@ -314,34 +341,11 @@ let classify_build_error ctx =
   | Some result ->
       (* Check if we have errors that we can fix *)
       Log.debug (fun m -> m "Build failed with output:\n%s" result.output);
-      (* Use already parsed warnings from build result *)
-      let parsed_errors : Types.warning_info list = result.warnings in
-      let fixable_errors =
-        List.filter
-          (fun w ->
-            match w.Types.warning_type with
-            | Types.Signature_mismatch | Types.Unbound_field -> true
-            | Types.Unused_value -> true (* Warning 32 is fixable *)
-            | Types.Unused_type -> true (* Warning 34 is fixable *)
-            | Types.Unused_open -> true (* Warning 33 is fixable *)
-            | Types.Unused_constructor -> true (* Warning 37 is fixable *)
-            | Types.Unused_field -> true (* Warning 69 is fixable *)
-            | Types.Unnecessary_mutable ->
-                true
-                (* Warning 69 mutable - fixable by removing mutable keyword *)
-            | _ -> false)
-          parsed_errors
-      in
-      Log.debug (fun m ->
-          m "Found %d fixable errors" (List.length fixable_errors));
+      let fixable_errors = extract_fixable_errors result in
       if fixable_errors <> [] then Types.Fixable_errors fixable_errors
       else
         (* Include the actual build output to help users debug *)
-        let output_excerpt =
-          if String.length result.output > 1000 then
-            String.sub result.output 0 1000 ^ "\n[... output truncated ...]"
-          else result.output
-        in
+        let output_excerpt = create_output_excerpt result in
         Types.Other_errors output_excerpt
 
 (* Count all errors in build output, including syntax errors *)

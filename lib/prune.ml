@@ -242,6 +242,37 @@ let fix_all_warnings ~cache root_dir warnings =
             Fmt.pr "  Fixed %d error%s@." total (if total = 1 then "" else "s");
           Ok total)
 
+(* Handle clean build after removing exports *)
+let handle_clean_build ~cache iteration total_mli total_ml mli_changes loop =
+  if mli_changes = 0 then
+    let stats = print_iteration_summary ~cache iteration total_mli total_ml in
+    Ok stats
+  else
+    (* Continue with next iteration *)
+    loop (iteration + 1) (total_mli + mli_changes) total_ml
+
+(* Handle build failure and try to fix warnings *)
+let handle_build_failure ~cache root_dir iteration total_mli total_ml
+    mli_changes loop ctx =
+  match System.classify_build_error ctx with
+  | No_error -> err_build_failed_no_info ()
+  | Other_errors _ -> err_build_error ctx
+  | Fixable_errors warnings -> (
+      (* Fix warnings and continue *)
+      match fix_all_warnings ~cache root_dir warnings with
+      | Error e -> Error e
+      | Ok warning_count ->
+          if warning_count = 0 && mli_changes = 0 then
+            (* No progress made - we're done *)
+            let stats =
+              print_iteration_summary ~cache iteration total_mli total_ml
+            in
+            Ok stats
+          else
+            (* Made progress - continue *)
+            loop (iteration + 1) (total_mli + mli_changes)
+              (total_ml + warning_count))
+
 (* Main iterative analysis loop *)
 let iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files =
   Fmt.pr "@.";
@@ -262,36 +293,11 @@ let iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files =
         (* Build and check for warnings *)
         match System.build_project_and_index root_dir empty_context with
         | Ok () ->
-            (* Clean build - check if we made progress *)
-            if mli_changes = 0 then
-              let stats =
-                print_iteration_summary ~cache iteration total_mli total_ml
-              in
-              Ok stats
-            else
-              (* Continue with next iteration *)
-              loop (iteration + 1) (total_mli + mli_changes) total_ml
-        | Error (`Build_failed ctx) -> (
-            (* Build failed - try to fix it *)
-            match System.classify_build_error ctx with
-            | No_error -> err_build_failed_no_info ()
-            | Other_errors _ -> err_build_error ctx
-            | Fixable_errors warnings -> (
-                (* Fix warnings and continue *)
-                match fix_all_warnings ~cache root_dir warnings with
-                | Error e -> Error e
-                | Ok warning_count ->
-                    if warning_count = 0 && mli_changes = 0 then
-                      (* No progress made - we're done *)
-                      let stats =
-                        print_iteration_summary ~cache iteration total_mli
-                          total_ml
-                      in
-                      Ok stats
-                    else
-                      (* Made progress - continue *)
-                      loop (iteration + 1) (total_mli + mli_changes)
-                        (total_ml + warning_count))))
+            handle_clean_build ~cache iteration total_mli total_ml mli_changes
+              loop
+        | Error (`Build_failed ctx) ->
+            handle_build_failure ~cache root_dir iteration total_mli total_ml
+              mli_changes loop ctx)
   in
 
   loop 1 0 0

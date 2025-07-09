@@ -26,16 +26,13 @@ let group_by_symbol occurrences =
       (key, occ :: existing) :: List.remove_assoc key acc)
     [] occurrences
 
-let render_cli occurrences =
-  let by_file = group_by_file occurrences in
-  let sorted_files =
-    List.sort (fun (f1, _) (f2, _) -> String.compare f1 f2) by_file
-  in
-
+(* Print CLI header *)
+let print_cli_header () =
   Fmt.pr "@[<v>Symbol Occurrence Report@,";
-  Fmt.pr "========================@,@,";
+  Fmt.pr "========================@,@,"
 
-  (* Summary *)
+(* Print CLI summary statistics *)
+let print_cli_summary occurrences =
   let total_symbols = List.length occurrences in
   let used_symbols = List.filter (fun o -> o.usage_class = Used) occurrences in
   let unused_symbols =
@@ -48,43 +45,57 @@ let render_cli occurrences =
   Fmt.pr "Total symbols: %d@," total_symbols;
   Fmt.pr "Used symbols: %d@," (List.length used_symbols);
   Fmt.pr "Unused symbols: %d@," (List.length unused_symbols);
-  Fmt.pr "Used only in excluded dirs: %d@,@," (List.length excluded_only);
+  Fmt.pr "Used only in excluded dirs: %d@,@," (List.length excluded_only)
+
+(* Print usage locations for an occurrence *)
+let print_usage_locations occ =
+  if occ.occurrences > 0 then
+    (* Filter out the definition location itself *)
+    let usage_locations =
+      List.filter
+        (fun loc ->
+          (* Filter out locations on the same line as the definition *)
+          loc.file <> occ.symbol.location.file
+          || loc.start_line <> occ.symbol.location.start_line)
+        occ.locations
+    in
+    if usage_locations <> [] then (
+      Fmt.pr "    Used in:@,";
+      List.iter
+        (fun loc -> Fmt.pr "      %a@," pp_location_link loc)
+        usage_locations)
+
+(* Print occurrences for a single file *)
+let print_file_occurrences file occs =
+  Fmt.pr "@[<v2>File: %s@," file;
+  let sorted_occs =
+    List.sort
+      (fun o1 o2 ->
+        match String.compare o1.symbol.name o2.symbol.name with
+        | 0 -> compare o1.symbol.kind o2.symbol.kind
+        | n -> n)
+      occs
+  in
+  List.iter
+    (fun occ ->
+      Fmt.pr "  %a - %a@,"
+        (fun fmt () -> pp_symbol_with_count fmt occ.symbol occ.occurrences)
+        () pp_usage_classification occ.usage_class;
+      print_usage_locations occ)
+    sorted_occs;
+  Fmt.pr "@]@,"
+
+let render_cli occurrences =
+  let by_file = group_by_file occurrences in
+  let sorted_files =
+    List.sort (fun (f1, _) (f2, _) -> String.compare f1 f2) by_file
+  in
+
+  print_cli_header ();
+  print_cli_summary occurrences;
 
   (* By file *)
-  List.iter
-    (fun (file, occs) ->
-      Fmt.pr "@[<v2>File: %s@," file;
-      let sorted_occs =
-        List.sort
-          (fun o1 o2 ->
-            match String.compare o1.symbol.name o2.symbol.name with
-            | 0 -> compare o1.symbol.kind o2.symbol.kind
-            | n -> n)
-          occs
-      in
-      List.iter
-        (fun occ ->
-          Fmt.pr "  %a - %a@,"
-            (fun fmt () -> pp_symbol_with_count fmt occ.symbol occ.occurrences)
-            () pp_usage_classification occ.usage_class;
-          if occ.occurrences > 0 then
-            (* Filter out the definition location itself *)
-            let usage_locations =
-              List.filter
-                (fun loc ->
-                  (* Filter out locations on the same line as the definition *)
-                  loc.file <> occ.symbol.location.file
-                  || loc.start_line <> occ.symbol.location.start_line)
-                occ.locations
-            in
-            if usage_locations <> [] then (
-              Fmt.pr "    Used in:@,";
-              List.iter
-                (fun loc -> Fmt.pr "      %a@," pp_location_link loc)
-                usage_locations))
-        sorted_occs;
-      Fmt.pr "@]@,")
-    sorted_files;
+  List.iter (fun (file, occs) -> print_file_occurrences file occs) sorted_files;
   Fmt.pr "@]@."
 
 let escape_html s =

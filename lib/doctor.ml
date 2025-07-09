@@ -113,7 +113,6 @@ let check_merlin_config root_dir =
       (* Check if merlin can load the project *)
       match parse_merlin_response output with
       | Some "return", _ ->
-          (* Also check cache statistics to detect potential issues *)
           let cache_warnings =
             match check_merlin_cache_stats root_dir None with
             | Some (Some misses) when misses > 5 ->
@@ -202,6 +201,42 @@ let check_build_artifacts root_dir =
 let make_merlin_test_result ?(details = []) passed message =
   { check_name = "Merlin occurrences test"; passed; message; details }
 
+(* Get cache miss details for merlin test *)
+let get_cache_miss_details root_dir sample_mli =
+  match check_merlin_cache_stats root_dir (Some sample_mli) with
+  | Some (Some misses) when misses > 2 ->
+      [
+        Printf.sprintf
+          "High cache misses detected (%d) - merlin may not see all compiled \
+           files"
+          misses;
+        "This can cause incorrect occurrence detection";
+      ]
+  | _ -> []
+
+(* Process merlin occurrences response *)
+let process_merlin_occurrences_response root_dir sample_mli output =
+  match parse_merlin_response output with
+  | Some "return", _ ->
+      let details = get_cache_miss_details root_dir sample_mli in
+      make_merlin_test_result true "Merlin occurrences command works" ~details
+  | _ ->
+      make_merlin_test_result false "Merlin returned unexpected output"
+        ~details:
+          [ "Output: " ^ String.sub output 0 (min 200 (String.length output)) ]
+
+(* Test merlin occurrences command *)
+let test_merlin_occurrences_command root_dir sample_mli =
+  let cmd =
+    Printf.sprintf
+      "ocamlmerlin single occurrences -identifier-at 1:4 -scope project \
+       -filename '%s' < '%s'"
+      sample_mli sample_mli
+  in
+  match run_with_timeout cmd with
+  | Error _ -> make_merlin_test_result false "Failed to run merlin occurrences"
+  | Ok output -> process_merlin_occurrences_response root_dir sample_mli output
+
 let test_merlin_occurrences root_dir sample_mli =
   (* Check if it's a directory *)
   match OS.Dir.exists (Fpath.v sample_mli) with
@@ -214,46 +249,7 @@ let test_merlin_occurrences root_dir sample_mli =
       | Ok false | Error _ ->
           make_merlin_test_result false
             (Printf.sprintf "Sample file %s not found" sample_mli)
-      | Ok true -> (
-          (* Try to get occurrences for the first value in the file *)
-          let cmd =
-            Printf.sprintf
-              "ocamlmerlin single occurrences -identifier-at 1:4 -scope \
-               project -filename '%s' < '%s'"
-              sample_mli sample_mli
-          in
-          match run_with_timeout cmd with
-          | Error _ ->
-              make_merlin_test_result false "Failed to run merlin occurrences"
-          | Ok output -> (
-              (* Check if output contains expected JSON structure *)
-              match parse_merlin_response output with
-              | Some "return", _ ->
-                  let cache_stats =
-                    check_merlin_cache_stats root_dir (Some sample_mli)
-                  in
-                  let details =
-                    match cache_stats with
-                    | Some (Some misses) when misses > 2 ->
-                        [
-                          Printf.sprintf
-                            "High cache misses detected (%d) - merlin may not \
-                             see all compiled files"
-                            misses;
-                          "This can cause incorrect occurrence detection";
-                        ]
-                    | _ -> []
-                  in
-                  make_merlin_test_result true
-                    "Merlin occurrences command works" ~details
-              | _ ->
-                  make_merlin_test_result false
-                    "Merlin returned unexpected output"
-                    ~details:
-                      [
-                        "Output: "
-                        ^ String.sub output 0 (min 200 (String.length output));
-                      ])))
+      | Ok true -> test_merlin_occurrences_command root_dir sample_mli)
 
 (* Check if dune @ocaml-index target exists *)
 let check_dune_available () =
