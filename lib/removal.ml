@@ -85,7 +85,7 @@ let handle_exact_bounds ~cache ~file ~line ~col include_attributes =
 
 (* Handle value binding lookup with fallback *)
 let handle_value_binding ~cache ~file ~line ~col =
-  match Locate.get_value_binding_for_removal ~cache ~file ~line ~col with
+  match Locate.find_value_binding ~cache ~file ~line ~col with
   | Error (`Msg msg) -> (
       (* If we can't find a value binding, fall back to standard item detection
          but log a warning as this might indicate an issue *)
@@ -292,7 +292,7 @@ let create_removal_operation root_dir file cache (warning : warning_info) :
         get_enclosing_expression root_dir file warning.location.start_line
           warning.location.start_col
           ~location_precision:warning.location_precision
-          ~kind:(symbol_kind_of_warning_type warning.warning_type)
+          ~kind:(Types.symbol_kind_of_warning warning.warning_type)
           ~name:warning.name ~cache ~include_attributes:include_comments
     | Exact_definition, Line_removal { include_comments }
       when warning.warning_type = Signature_mismatch
@@ -448,7 +448,7 @@ let group_warnings_by_file warnings =
     [] warnings
 
 (* Get field info for operations *)
-let get_field_infos_for_ops ~cache ~file ops =
+let get_field_infos ~cache ~file ops =
   List.filter_map
     (fun op ->
       match
@@ -472,7 +472,7 @@ let group_by_record field_infos =
     [] field_infos
 
 (* Replace a type definition's record with unit *)
-let replace_type_record_with_unit cache file loc =
+let replace_type_with_unit cache file loc =
   (* Use AST to find the type definition and its equals sign *)
   match
     Locate.get_type_definition_info ~cache ~file ~line:loc.start_line
@@ -505,7 +505,7 @@ let replace_type_record_with_unit cache file loc =
               done))
 
 (* Replace a record construction with () *)
-let replace_record_construction_with_unit cache file loc =
+let replace_record_with_unit cache file loc =
   if loc.start_line = loc.end_line then
     match Cache.get_line cache file loc.start_line with
     | None -> ()
@@ -547,7 +547,7 @@ let replace_record_construction_with_unit cache file loc =
 
 (* Process all field operations together *)
 let process_field_removals ~cache ~root_dir ~file field_ops =
-  let field_infos = get_field_infos_for_ops ~cache ~file field_ops in
+  let field_infos = get_field_infos ~cache ~file field_ops in
   let by_record = group_by_record field_infos in
 
   Log.debug (fun m ->
@@ -573,14 +573,14 @@ let process_field_removals ~cache ~root_dir ~file field_ops =
                       "Removing all %d fields from record at line %d - \
                        replacing with unit"
                       total_fields loc.start_line);
-                replace_type_record_with_unit cache file loc
+                replace_type_with_unit cache file loc
             | `Record_construction ->
                 Log.info (fun m ->
                     m
                       "Removing all %d fields from record construction at line \
                        %d - replacing with ()"
                       total_fields loc.start_line);
-                replace_record_construction_with_unit cache file loc)
+                replace_record_with_unit cache file loc)
           else
             (* Not removing all fields - process normally *)
             List.iter

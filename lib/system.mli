@@ -42,5 +42,5 @@ val check_ocaml_version : unit -> (unit, [ `Msg of string ]) result
 val validate_dune_project : string -> (unit, [ `Msg of string ]) result
 (** Check if directory contains a dune project *)
 
-val display_build_failure_and_exit : Types.context -> 'a
+val display_failure_and_exit : Types.context -> unit
 (** Display build failure consistently and exit with the build's exit code *)

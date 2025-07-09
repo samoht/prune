@@ -162,7 +162,7 @@ let process_clean dry_run force step_wise use_merlin_server paths exclude_dirs
       ()
   | Error (`Build_error ctx) ->
       (* Build failure - display output and exit with build's exit code *)
-      Prune.System.display_build_failure_and_exit ctx
+      Prune.System.display_failure_and_exit ctx
   | Error e ->
       (* Other errors - use generic error code *)
       Prune.Output.error "%a" pp_error e;

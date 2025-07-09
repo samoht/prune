@@ -9,7 +9,7 @@ val get_enclosing_record :
 (** Get the bounds of the enclosing record construction. Used for empty record
     detection after field removal. *)
 
-val get_value_binding_for_removal :
+val find_value_binding :
   cache:Cache.t ->
   file:string ->
   line:int ->

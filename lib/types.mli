@@ -111,7 +111,7 @@ type location_precision =
 val precision_of_warning_type : warning_type -> location_precision
 (** Get the location precision for a given warning type *)
 
-val symbol_kind_of_warning_type : warning_type -> symbol_kind
+val symbol_kind_of_warning : warning_type -> symbol_kind
 (** Convert warning type to symbol kind *)
 
 type warning_info = {

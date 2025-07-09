@@ -150,7 +150,7 @@ let warning_type_of_number = function
   | "69" -> Types.Unused_field
   | n -> failwith (Fmt.str "Unexpected warning number: %s" n)
 
-let parse_warning_name_and_type line =
+let parse_warning_name line =
   (* Parse name and type from warning messages *)
   (* First extract the warning number using Re DSL *)
   let num_re =
@@ -281,13 +281,13 @@ let parse_signature_mismatch_error lines =
 
 (* Parse warnings using a simpler approach - scan for all warning messages
    first, then match with locations *)
-let parse_all_from_lines_simple lines =
+let parse_all_from_lines lines =
   let rec find_warnings acc lines_with_idx =
     match lines_with_idx with
     | [] -> List.rev acc
     | (line, idx) :: rest -> (
         (* Look for warning pattern in current line *)
-        match parse_warning_name_and_type line with
+        match parse_warning_name line with
         | Some (name, warning_type) -> (
             Log.debug (fun m ->
                 m "Found warning '%s' type %s on line %d: %s" name
@@ -378,7 +378,7 @@ let parse_unbound_field_error lines =
 let parse output =
   let lines = String.split_on_char '\n' output in
   (* Parse all types of warnings/errors *)
-  let warnings = parse_all_from_lines_simple lines in
+  let warnings = parse_all_from_lines lines in
   let sig_mismatches = parse_signature_mismatch_error lines in
   let unbound_fields = parse_unbound_field_error lines in
 

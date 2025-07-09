@@ -77,7 +77,7 @@ let is_module_type_alias content col =
   match find_line [] col lines with None -> false | Some result -> result
 
 (* Check if a multi-line module signature contains 'include module type of' *)
-let is_multiline_module_type_alias ~cache file start_line end_line_opt =
+let is_multiline_alias ~cache file start_line end_line_opt =
   let max_lines_to_check = 20 in
   (* Reasonable limit for module signatures *)
   let end_line =
@@ -103,6 +103,6 @@ let is_module_alias ~cache file symbol_kind loc content =
       (* For .mli files, check if it's a module type alias or uses 'include
          module type of' *)
       is_module_type_alias content loc.Types.start_col
-      || is_multiline_module_type_alias ~cache file loc.Types.start_line
+      || is_multiline_alias ~cache file loc.Types.start_line
            (Some loc.Types.end_line)
   | _ -> false

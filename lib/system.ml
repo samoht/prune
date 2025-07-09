@@ -367,7 +367,7 @@ let count_all_errors output =
     0 lines
 
 (* Helper to display build error and exit *)
-let display_build_failure_and_exit ctx =
+let display_failure_and_exit ctx =
   let total_error_count =
     match Types.get_last_build_result ctx with
     | Some result -> count_all_errors result.output

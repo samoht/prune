@@ -20,7 +20,7 @@ let pp_build_error ppf ctx =
   | Some result -> Fmt.pf ppf "%s" result.output
 
 let err_build_failed ctx = err "Build failed:@.%a" pp_build_error ctx
-let err_build_failed_no_info () = err "Build failed with no error information"
+let err_build_no_info () = err "Build failed with no error information"
 let err_build_error ctx = Error (`Build_error ctx)
 
 type merlin_mode = System.merlin_mode
@@ -130,7 +130,7 @@ let with_built_project ?(ctx = empty_context) root_dir f =
   | Ok () -> f ctx
   | Error (`Build_failed ctx) -> (
       match System.classify_build_error ctx with
-      | No_error -> err_build_failed_no_info ()
+      | No_error -> err_build_no_info ()
       | Fixable_errors _ -> err_build_failed ctx
       | Other_errors _output ->
           (* Return error with context for main.ml to handle *)
@@ -255,7 +255,7 @@ let handle_clean_build ~cache iteration total_mli total_ml mli_changes loop =
 let handle_build_failure ~cache root_dir iteration total_mli total_ml
     mli_changes loop ctx =
   match System.classify_build_error ctx with
-  | No_error -> err_build_failed_no_info ()
+  | No_error -> err_build_no_info ()
   | Other_errors _ -> err_build_error ctx
   | Fixable_errors warnings -> (
       (* Fix warnings and continue *)

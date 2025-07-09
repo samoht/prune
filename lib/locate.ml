@@ -88,7 +88,7 @@ let extend_field_bounds field_loc next_item_loc is_last_field =
     T.extend field_loc ~end_line:next_item_loc.T.start_line
       ~end_col:next_item_loc.T.start_col
 
-let find_field_in_type_def file type_decl ~line ~col ~field_name =
+let find_field_in_type file type_decl ~line ~col ~field_name =
   match type_decl.ptype_kind with
   | Ptype_record label_decls ->
       let record_loc = location_of_ppxlib_location file type_decl.ptype_loc in
@@ -122,7 +122,7 @@ let find_field_in_type_def file type_decl ~line ~col ~field_name =
         decls_array
   | _ -> None
 
-let find_field_in_record_expr file expr ~line ~col ~field_name =
+let find_field_in_record file expr ~line ~col ~field_name =
   match expr.pexp_desc with
   | Pexp_record (fields, _) ->
       let record_loc = location_of_ppxlib_location file expr.pexp_loc in
@@ -237,7 +237,7 @@ let get_structure_item_bounds file ast ~line ~col =
       else None)
     items
 
-let rec get_value_in_sig_module file module_type ~line ~col =
+let rec find_value_in_module file module_type ~line ~col =
   match module_type.pmty_desc with
   | Pmty_signature items ->
       (* Look for value declarations inside this module signature *)
@@ -253,7 +253,7 @@ let rec get_value_in_sig_module file module_type ~line ~col =
               else None
           | Psig_module md ->
               (* Recursively check inside nested modules *)
-              get_value_in_sig_module file md.pmd_type ~line ~col
+              find_value_in_module file md.pmd_type ~line ~col
           | _ -> None)
         items_array
   | _ -> None
@@ -277,7 +277,7 @@ let get_signature_item_bounds file ast ~line ~col =
         | Psig_module md -> (
             (* Check if we're inside a module - if so, find the specific
                value *)
-            match get_value_in_sig_module file md.pmd_type ~line ~col with
+            match find_value_in_module file md.pmd_type ~line ~col with
             | Some bounds -> Some bounds
             | None ->
                 (* Not inside a value, return the whole module *)
@@ -300,12 +300,12 @@ let get_field_info ~cache ~file ~line ~col ~field_name =
           inherit Ast_traverse.iter as super
 
           method! type_declaration td =
-            match find_field_in_type_def file td ~line ~col ~field_name with
+            match find_field_in_type file td ~line ~col ~field_name with
             | Some info -> raise (Found_field info)
             | None -> super#type_declaration td
 
           method! expression e =
-            match find_field_in_record_expr file e ~line ~col ~field_name with
+            match find_field_in_record file e ~line ~col ~field_name with
             | Some info -> raise (Found_field info)
             | None -> super#expression e
         end
@@ -343,7 +343,7 @@ let get_item_with_docs ~cache ~file ~line ~col =
         | Some bounds ->
             Ok (Comments.extend_location_with_comments cache file bounds))
 
-let get_value_binding_for_removal ~cache ~file ~line ~col =
+let find_value_binding ~cache ~file ~line ~col =
   match get_ast ~cache file with
   | Error e -> Error e
   | Ok ast -> (

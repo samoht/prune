@@ -205,7 +205,7 @@ let precision_of_warning_type = function
   | Signature_mismatch -> Exact_definition
   | Unbound_field -> Needs_field_usage_parsing
 
-let symbol_kind_of_warning_type = function
+let symbol_kind_of_warning = function
   | Unused_value -> Value
   | Unused_type -> Type
   | Unused_open -> Module (* Open statements relate to modules *)
