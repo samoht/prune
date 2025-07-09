@@ -227,6 +227,33 @@ let all_external_uses_excluded exclude_dirs external_locs =
          not is_excluded)
        external_locs)
 
+(* Classify symbol with no external uses *)
+let classify_no_external_uses (sym : symbol_info) counts =
+  Log.debug (fun m ->
+      m "  No external uses for %s, in_defining_mli=%d, in_defining_ml=%d"
+        sym.name counts.in_defining_mli counts.in_defining_ml);
+  if counts.in_defining_mli = 1 then (
+    Log.debug (fun m -> m "  -> Marking %s as Unused" sym.name);
+    Unused)
+  else (
+    Log.debug (fun m -> m "  -> Marking %s as Used" sym.name);
+    Used)
+
+(* Classify symbol with external uses *)
+let classify_with_external_uses exclude_dirs (sym : symbol_info) external_locs =
+  Log.debug (fun m ->
+      m "  %s has %d external uses" sym.name (List.length external_locs));
+  if all_external_uses_excluded exclude_dirs external_locs then (
+    Log.debug (fun m ->
+        m
+          "  -> All external uses are excluded, marking as \
+           Used_only_in_excluded");
+    Used_only_in_excluded)
+  else (
+    Log.debug (fun m ->
+        m "  -> Has non-excluded external uses, marking as Used");
+    Used)
+
 (* Classify usage for types, values, and fields *)
 let classify_type_value_field exclude_dirs (sym : symbol_info) occurrence_count
     locations =
@@ -254,32 +281,9 @@ let classify_type_value_field exclude_dirs (sym : symbol_info) occurrence_count
   else
     (* Determine usage classification *)
     match counts.external_uses with
-    | [] ->
-        (* No external uses - if only in defining .mli (and optionally .ml),
-           it's unused *)
-        Log.debug (fun m ->
-            m "  No external uses for %s, in_defining_mli=%d, in_defining_ml=%d"
-              sym.name counts.in_defining_mli counts.in_defining_ml);
-        if counts.in_defining_mli = 1 then (
-          Log.debug (fun m -> m "  -> Marking %s as Unused" sym.name);
-          Unused)
-        else (
-          Log.debug (fun m -> m "  -> Marking %s as Used" sym.name);
-          Used)
+    | [] -> classify_no_external_uses sym counts
     | external_locs ->
-        (* Has external uses - check if all are in excluded directories *)
-        Log.debug (fun m ->
-            m "  %s has %d external uses" sym.name (List.length external_locs));
-        if all_external_uses_excluded exclude_dirs external_locs then (
-          Log.debug (fun m ->
-              m
-                "  -> All external uses are excluded, marking as \
-                 Used_only_in_excluded");
-          Used_only_in_excluded)
-        else (
-          Log.debug (fun m ->
-              m "  -> Has non-excluded external uses, marking as Used");
-          Used)
+        classify_with_external_uses exclude_dirs sym external_locs
 
 (* Classify how a symbol is used based on its occurrences *)
 let classify_usage exclude_dirs (symbol : symbol_info) occurrence_count

@@ -2,66 +2,74 @@
 
 module Log = (val Logs.src_log (Logs.Src.create "prune.warning") : Logs.LOG)
 
-(* Parse warning 32/34 location from build output line *)
-let parse_warning_line line =
-  (* Examples: File "lib/prune.ml", line 15, characters 4-17: File
-     "lib/brui.mli", lines 5-6, characters 2-80: *)
-  let line = String.trim line in
-  (* First try single line format *)
-  let single_line_re =
-    Re.(
-      compile
-        (seq
-           [
-             bos;
-             str "File \"";
-             group (rep1 (compl [ char '"' ]));
-             str "\", line ";
-             group (rep1 digit);
-             str ", characters ";
-             group (rep1 digit);
-             str "-";
-             group (rep1 digit);
-             str ":";
-           ]))
-  in
-  (* Also try multi-line format *)
-  let multi_line_re =
-    Re.(
-      compile
-        (seq
-           [
-             bos;
-             str "File \"";
-             group (rep1 (compl [ char '"' ]));
-             str "\", lines ";
-             group (rep1 digit);
-             str "-";
-             group (rep1 digit);
-             str ", characters ";
-             group (rep1 digit);
-             str "-";
-             group (rep1 digit);
-             str ":";
-           ]))
-  in
+(* Create regex patterns for warning location parsing *)
+let single_line_pattern =
+  Re.(
+    compile
+      (seq
+         [
+           bos;
+           str "File \"";
+           group (rep1 (compl [ char '"' ]));
+           str "\", line ";
+           group (rep1 digit);
+           str ", characters ";
+           group (rep1 digit);
+           str "-";
+           group (rep1 digit);
+           str ":";
+         ]))
+
+let multi_line_pattern =
+  Re.(
+    compile
+      (seq
+         [
+           bos;
+           str "File \"";
+           group (rep1 (compl [ char '"' ]));
+           str "\", lines ";
+           group (rep1 digit);
+           str "-";
+           group (rep1 digit);
+           str ", characters ";
+           group (rep1 digit);
+           str "-";
+           group (rep1 digit);
+           str ":";
+         ]))
+
+(* Parse single line warning format *)
+let parse_single_line line =
   try
-    let groups = Re.exec ~pos:0 single_line_re line in
+    let groups = Re.exec ~pos:0 single_line_pattern line in
     let file = Re.Group.get groups 1 in
     let line = int_of_string (Re.Group.get groups 2) in
     let start_col = int_of_string (Re.Group.get groups 3) in
     let end_col = int_of_string (Re.Group.get groups 4) in
     Some (Types.location file ~line ~start_col ~end_col)
-  with Not_found -> (
-    try
-      let groups = Re.exec ~pos:0 multi_line_re line in
-      let file = Re.Group.get groups 1 in
-      let start_line = int_of_string (Re.Group.get groups 2) in
-      let end_line = int_of_string (Re.Group.get groups 3) in
-      let start_col = int_of_string (Re.Group.get groups 4) in
-      let end_col = int_of_string (Re.Group.get groups 5) in
-      Some (Types.location file ~line:start_line ~start_col ~end_line ~end_col)
-    with Not_found -> None)
+  with Not_found -> None
+
+(* Parse multi-line warning format *)
+let parse_multi_line line =
+  try
+    let groups = Re.exec ~pos:0 multi_line_pattern line in
+    let file = Re.Group.get groups 1 in
+    let start_line = int_of_string (Re.Group.get groups 2) in
+    let end_line = int_of_string (Re.Group.get groups 3) in
+    let start_col = int_of_string (Re.Group.get groups 4) in
+    let end_col = int_of_string (Re.Group.get groups 5) in
+    Some (Types.location file ~line:start_line ~start_col ~end_line ~end_col)
+  with Not_found -> None
+
+(* Parse warning 32/34 location from build output line *)
+let parse_warning_line line =
+  (* Examples: File "lib/prune.ml", line 15, characters 4-17: File
+     "lib/brui.mli", lines 5-6, characters 2-80: *)
+  let line = String.trim line in
+  match parse_single_line line with
+  | Some location -> Some location
+  | None -> parse_multi_line line
 
 (* Parse warning 32/33/34/69 symbol name and type from warning message *)
 (* Helper to create regex for standard unused pattern *)

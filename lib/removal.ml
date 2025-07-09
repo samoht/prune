@@ -173,6 +173,45 @@ let replace_line_range line start_col end_col =
     Bytes.to_string bytes)
   else line
 
+(* Handle single-line field removal *)
+let handle_single_line_field ~is_definition cache file loc replacements =
+  let line_idx = loc.start_line - 1 in
+  match Cache.get_line cache file loc.start_line with
+  | None -> ()
+  | Some line ->
+      let start_col =
+        if is_definition then loc.start_col else loc.start_col - 1
+      in
+      let new_line = replace_line_range line start_col loc.end_col in
+      Log.debug (fun m ->
+          m "Replacing cols %d-%d in '%s' (%s)" start_col loc.end_col line
+            (if is_definition then "definition" else "usage"));
+      replacements := [ (line_idx, new_line) ]
+
+(* Handle multi-line field removal *)
+let handle_multi_line_field cache file loc replacements =
+  (* Replace first line *)
+  let first_line_idx = loc.start_line - 1 in
+  (match Cache.get_line cache file loc.start_line with
+  | None -> ()
+  | Some first_line ->
+      let new_first =
+        replace_line_range first_line (loc.start_col - 1)
+          (String.length first_line)
+      in
+      replacements := [ (first_line_idx, new_first) ]);
+  (* Clear intermediate lines *)
+  for i = loc.start_line to loc.end_line - 2 do
+    replacements := (i, "") :: !replacements
+  done;
+  (* Handle last line *)
+  let last_line_idx = loc.end_line - 1 in
+  match Cache.get_line cache file loc.end_line with
+  | None -> ()
+  | Some last_line ->
+      let new_last = replace_line_range last_line 0 loc.end_col in
+      replacements := (last_line_idx, new_last) :: !replacements
+
 (* Process field definition removal *)
 (* Generic field removal processing *)
 let process_field_removal ~is_definition _root_dir file cache operation =
@@ -190,44 +229,9 @@ let process_field_removal ~is_definition _root_dir file cache operation =
       let loc = field_info.full_field_bounds in
       let replacements = ref [] in
 
-      (if loc.start_line = loc.end_line then (
-         (* Single line field *)
-         let line_idx = loc.start_line - 1 in
-         match Cache.get_line cache file loc.start_line with
-         | None -> ()
-         | Some line ->
-             let start_col =
-               if is_definition then loc.start_col else loc.start_col - 1
-             in
-             let new_line = replace_line_range line start_col loc.end_col in
-             Log.debug (fun m ->
-                 m "Replacing cols %d-%d in '%s' (%s)" start_col loc.end_col
-                   line
-                   (if is_definition then "definition" else "usage"));
-             replacements := [ (line_idx, new_line) ])
-       else
-         (* Multi-line field *)
-         (* Replace first line *)
-         let first_line_idx = loc.start_line - 1 in
-         (match Cache.get_line cache file loc.start_line with
-         | None -> ()
-         | Some first_line ->
-             let new_first =
-               replace_line_range first_line (loc.start_col - 1)
-                 (String.length first_line)
-             in
-             replacements := [ (first_line_idx, new_first) ]);
-         (* Clear intermediate lines *)
-         for i = loc.start_line to loc.end_line - 2 do
-           replacements := (i, "") :: !replacements
-         done;
-         (* Handle last line *)
-         let last_line_idx = loc.end_line - 1 in
-         match Cache.get_line cache file loc.end_line with
-         | None -> ()
-         | Some last_line ->
-             let new_last = replace_line_range last_line 0 loc.end_col in
-             replacements := (last_line_idx, new_last) :: !replacements);
+      if loc.start_line = loc.end_line then
+        handle_single_line_field ~is_definition cache file loc replacements
+      else handle_multi_line_field cache file loc replacements;
       Characters_replaced (List.rev !replacements)
 
 (* Wrapper functions for specific field removal types *)
@@ -378,6 +382,44 @@ let symbols_to_warnings symbols =
       })
     symbols
 
+(* Process removal operations for loaded symbols *)
+let process_removal_operations root_dir file cache symbols =
+  let warnings = symbols_to_warnings symbols in
+  let operations =
+    List.map (create_removal_operation root_dir file cache) warnings
+  in
+  List.iter
+    (fun op ->
+      Log.debug (fun m ->
+          m "Processing removal for %s at %s:%d-%d (enclosing: %s)"
+            op.context.warning.name file op.location.start_line
+            op.location.end_line
+            (match op.context.enclosing with
+            | None -> "none"
+            | Some enc -> Printf.sprintf "%d-%d" enc.start_line enc.end_line));
+      let result = process_removal_operation root_dir file cache op in
+      apply_removal_result file cache result op.context)
+    operations
+
+(* Handle file deletion or writing after removals *)
+let handle_file_after_removal cache file =
+  if Cache.is_file_empty cache file && can_delete_empty_file file then (
+    Log.info (fun m -> m "File %s is now empty, deleting it" file);
+    match Bos.OS.File.delete (Fpath.v file) with
+    | Ok () ->
+        Log.info (fun m -> m "Successfully deleted empty file %s" file);
+        Ok ()
+    | Error (`Msg msg) -> (
+        Log.warn (fun m -> m "Failed to delete empty file %s: %s" file msg);
+        (* Fall back to writing the empty file *)
+        match Cache.write cache file with
+        | Ok () -> Ok ()
+        | Error (`Msg m) -> err_file_write file m))
+  else
+    match Cache.write cache file with
+    | Ok () -> Ok ()
+    | Error (`Msg m) -> err_file_write file m
+
 let remove_unused_exports ~cache root_dir file (symbols : symbol_info list) =
   Log.info (fun m ->
       m "remove_unused_exports called for %s with %d symbols" file
@@ -389,51 +431,11 @@ let remove_unused_exports ~cache root_dir file (symbols : symbol_info list) =
     match Cache.load cache file with
     | Error (`Msg m) -> err_file_read file m
     | Ok () -> (
-        (* Convert symbols to warnings for uniform processing *)
-        let warnings = symbols_to_warnings symbols in
-        (* Create removal operations *)
-        let operations =
-          List.map (create_removal_operation root_dir file cache) warnings
-        in
-        (* Process each operation and apply results *)
-        List.iter
-          (fun op ->
-            Log.debug (fun m ->
-                m "Processing removal for %s at %s:%d-%d (enclosing: %s)"
-                  op.context.warning.name file op.location.start_line
-                  op.location.end_line
-                  (match op.context.enclosing with
-                  | None -> "none"
-                  | Some enc ->
-                      Printf.sprintf "%d-%d" enc.start_line enc.end_line));
-            let result = process_removal_operation root_dir file cache op in
-            apply_removal_result file cache result op.context)
-          operations;
+        process_removal_operations root_dir file cache symbols;
         (* Only write cache if there were actual changes made *)
         match Cache.has_changes cache file with
         | false -> Ok ()
-        | true -> (
-            if
-              (* Check if file is now empty and should be deleted *)
-              Cache.is_file_empty cache file && can_delete_empty_file file
-            then (
-              Log.info (fun m -> m "File %s is now empty, deleting it" file);
-              match Bos.OS.File.delete (Fpath.v file) with
-              | Ok () ->
-                  Log.info (fun m ->
-                      m "Successfully deleted empty file %s" file);
-                  Ok ()
-              | Error (`Msg msg) -> (
-                  Log.warn (fun m ->
-                      m "Failed to delete empty file %s: %s" file msg);
-                  (* Fall back to writing the empty file *)
-                  match Cache.write cache file with
-                  | Ok () -> Ok ()
-                  | Error (`Msg m) -> err_file_write file m))
-            else
-              match Cache.write cache file with
-              | Ok () -> Ok ()
-              | Error (`Msg m) -> err_file_write file m))
+        | true -> handle_file_after_removal cache file)
 
 (* Remove unused code based on compiler warnings *)
 (* Group warnings by their file path *)

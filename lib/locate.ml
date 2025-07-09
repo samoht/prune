@@ -159,6 +159,45 @@ let find_field_in_record_expr file expr ~line ~col ~field_name =
 
 (* Type definition handling *)
 
+(* Get type keyword location *)
+let get_type_keyword_loc file item =
+  let item_loc = location_of_ppxlib_location file item.pstr_loc in
+  T.extend item_loc ~end_line:item_loc.start_line
+    ~end_col:(item_loc.start_col + 4)
+(* "type" *)
+
+(* Get equals location for type definition *)
+let get_equals_loc file td =
+  match (td.ptype_kind, td.ptype_manifest) with
+  | Ptype_abstract, Some _ | Ptype_record _, _ | Ptype_variant _, _ ->
+      let name_loc = location_of_ppxlib_location file td.ptype_name.loc in
+      Some
+        (T.location file ~line:name_loc.end_line
+           ~start_col:(name_loc.end_col + 1) ~end_line:name_loc.end_line
+           ~end_col:(name_loc.end_col + 2))
+  | _ -> None
+
+(* Get type definition kind *)
+let get_type_kind td =
+  match td.ptype_kind with
+  | Ptype_abstract -> if td.ptype_manifest <> None then `Alias else `Abstract
+  | Ptype_record _ -> `Record
+  | Ptype_variant _ -> `Variant
+  | Ptype_open -> `Abstract
+
+(* Process type declaration and create type_def_info *)
+let process_type_decl file item td loc =
+  let type_keyword_loc = get_type_keyword_loc file item in
+  let equals_loc = get_equals_loc file td in
+  let kind = get_type_kind td in
+  {
+    type_name = td.ptype_name.txt;
+    type_keyword_loc;
+    equals_loc;
+    kind;
+    full_bounds = loc;
+  }
+
 let find_type_definition file ast ~line ~col =
   let visitor =
     object
@@ -171,49 +210,8 @@ let find_type_definition file ast ~line ~col =
               (fun td ->
                 let loc = location_of_ppxlib_location file td.ptype_loc in
                 if location_contains loc ~line ~col then
-                  let type_keyword_loc =
-                    let item_loc =
-                      location_of_ppxlib_location file item.pstr_loc
-                    in
-                    T.extend item_loc ~end_line:item_loc.start_line
-                      ~end_col:(item_loc.start_col + 4)
-                    (* "type" *)
-                  in
-
-                  let equals_loc =
-                    match (td.ptype_kind, td.ptype_manifest) with
-                    | Ptype_abstract, Some _
-                    | Ptype_record _, _
-                    | Ptype_variant _, _ ->
-                        let name_loc =
-                          location_of_ppxlib_location file td.ptype_name.loc
-                        in
-                        Some
-                          (T.location file ~line:name_loc.end_line
-                             ~start_col:(name_loc.end_col + 1)
-                             ~end_line:name_loc.end_line
-                             ~end_col:(name_loc.end_col + 2))
-                    | _ -> None
-                  in
-
-                  let kind =
-                    match td.ptype_kind with
-                    | Ptype_abstract ->
-                        if td.ptype_manifest <> None then `Alias else `Abstract
-                    | Ptype_record _ -> `Record
-                    | Ptype_variant _ -> `Variant
-                    | Ptype_open -> `Abstract
-                  in
-
-                  raise
-                    (Found_type_def
-                       {
-                         type_name = td.ptype_name.txt;
-                         type_keyword_loc;
-                         equals_loc;
-                         kind;
-                         full_bounds = loc;
-                       }))
+                  let type_def_info = process_type_decl file item td loc in
+                  raise (Found_type_def type_def_info))
               type_decls;
             super#structure_item item
         | _ -> super#structure_item item
