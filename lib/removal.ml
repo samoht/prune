@@ -71,44 +71,49 @@ let determine_removal_strategy (warning : warning_info) : removal_strategy =
 (* {1 Enclosing expression handling} *)
 
 (* Get enclosing expression for a given position *)
+(* Handle exact bounds with optional attributes *)
+let handle_exact_bounds ~cache ~file ~line ~col include_attributes =
+  if include_attributes then (
+    match Locate.get_item_with_docs ~cache ~file ~line ~col with
+    | Error (`Msg msg) -> err_ast_bounds_failed msg
+    | Ok loc ->
+        Log.debug (fun m ->
+            m "get_item_with_docs returned location %d-%d for %s:%d:%d"
+              loc.start_line loc.end_line file line col);
+        Some loc)
+  else None (* Use the exact bounds provided *)
+
+(* Handle value binding lookup with fallback *)
+let handle_value_binding ~cache ~file ~line ~col =
+  match Locate.get_value_binding_for_removal ~cache ~file ~line ~col with
+  | Error (`Msg msg) -> (
+      (* If we can't find a value binding, fall back to standard item detection
+         but log a warning as this might indicate an issue *)
+      Log.warn (fun m ->
+          m
+            "Could not find value binding at %s:%d:%d (%s), falling back to \
+             item detection"
+            file line col msg);
+      match Locate.get_item_with_docs ~cache ~file ~line ~col with
+      | Error (`Msg msg2) -> err_ast_bounds_failed msg2
+      | Ok loc -> Some loc)
+  | Ok loc -> Some loc
+
+(* Handle other symbol kinds *)
+let handle_other_kinds ~cache ~file ~line ~col =
+  match Locate.get_item_with_docs ~cache ~file ~line ~col with
+  | Error (`Msg msg) -> err_ast_bounds_failed msg
+  | Ok loc -> Some loc
+
 let get_enclosing_expression _root_dir file line col ~location_precision ~kind
     ~name:_ ~cache ~include_attributes : location option =
   match location_precision with
   | Exact_definition | Exact_statement ->
-      (* Even for exact bounds, we might need to include attributes *)
-      if include_attributes then (
-        match Locate.get_item_with_docs ~cache ~file ~line ~col with
-        | Error (`Msg msg) -> err_ast_bounds_failed msg
-        | Ok loc ->
-            Log.debug (fun m ->
-                m "get_item_with_docs returned location %d-%d for %s:%d:%d"
-                  loc.start_line loc.end_line file line col);
-            Some loc)
-      else None (* Use the exact bounds provided *)
+      handle_exact_bounds ~cache ~file ~line ~col include_attributes
   | Needs_enclosing_definition -> (
-      (* For value warnings, look specifically for value bindings *)
       match kind with
-      | Value -> (
-          match
-            Locate.get_value_binding_for_removal ~cache ~file ~line ~col
-          with
-          | Error (`Msg msg) -> (
-              (* If we can't find a value binding, fall back to standard item
-                 detection but log a warning as this might indicate an issue *)
-              Log.warn (fun m ->
-                  m
-                    "Could not find value binding at %s:%d:%d (%s), falling \
-                     back to item detection"
-                    file line col msg);
-              match Locate.get_item_with_docs ~cache ~file ~line ~col with
-              | Error (`Msg msg2) -> err_ast_bounds_failed msg2
-              | Ok loc -> Some loc)
-          | Ok loc -> Some loc)
-      | _ -> (
-          (* For other kinds, use the standard item detection *)
-          match Locate.get_item_with_docs ~cache ~file ~line ~col with
-          | Error (`Msg msg) -> err_ast_bounds_failed msg
-          | Ok loc -> Some loc))
+      | Value -> handle_value_binding ~cache ~file ~line ~col
+      | _ -> handle_other_kinds ~cache ~file ~line ~col)
   | Needs_field_usage_parsing ->
       failwith
         "Field usage parsing should be handled in create_removal_operation, \

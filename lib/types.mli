@@ -108,7 +108,7 @@ type location_precision =
       (** Location is field name in record construction, needs special parsing.
           No doc comments removal as we're removing usage, not definition. *)
 
-val location_precision_of_warning_type : warning_type -> location_precision
+val precision_of_warning_type : warning_type -> location_precision
 (** Get the location precision for a given warning type *)
 
 val symbol_kind_of_warning_type : warning_type -> symbol_kind

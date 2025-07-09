@@ -119,7 +119,7 @@ let is_excluded_file exclude_dirs file_path =
         dirs
 
 (* Helper to handle modules and constructors that rely on build warnings *)
-let handle_module_or_constructor_symbol (symbol : symbol_info) =
+let handle_module_or_constructor (symbol : symbol_info) =
   Log.info (fun m ->
       m "Skipping merlin occurrences for %s %s (relying on build warnings)"
         (string_of_symbol_kind symbol.kind)
@@ -305,7 +305,7 @@ let check_single ~cache exclude_dirs root_dir (symbol : symbol_info) =
      - Modules: need special handling for children
      For now, mark as potentially unused and let build warnings decide *)
   match symbol.kind with
-  | Module | Constructor -> handle_module_or_constructor_symbol symbol
+  | Module | Constructor -> handle_module_or_constructor symbol
   | _ ->
       (* For values and types, use merlin occurrences *)
       let occurrence_data = query_merlin ~cache root_dir symbol in

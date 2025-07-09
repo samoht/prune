@@ -191,7 +191,7 @@ type location_precision =
 (* Location is field name in record construction, needs special parsing. No doc
    comments removal as we're removing usage, not definition. *)
 
-let location_precision_of_warning_type = function
+let precision_of_warning_type = function
   | Unused_value -> Needs_enclosing_definition
   | Unused_type -> Exact_definition
   | Unused_open -> Exact_statement
@@ -361,12 +361,7 @@ let occurrence_location_of_json file = function
           | None -> None
           | Some (start_line, start_col) ->
               let end_line, end_col =
-                match end_json with
-                | Some ej -> (
-                    match position_of_json ej with
-                    | Some (el, ec) -> (el, ec)
-                    | None -> (start_line, start_col))
-                | None -> (start_line, start_col)
+                extract_end_position end_json start_line start_col
               in
               let file = file props in
               Some

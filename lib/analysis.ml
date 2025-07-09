@@ -56,7 +56,7 @@ and outline_item_to_symbol ~cache (item : outline_item) =
 (* {2 Symbol discovery} *)
 
 (* Get all exported symbols from a single .mli file *)
-let get_exported_symbols_from_file ~cache root_dir file_str =
+let get_file_symbols ~cache root_dir file_str =
   let merlin_result = System.call_merlin root_dir file_str "outline" in
   match outline_response_of_json ~file:file_str merlin_result with
   | Error e ->
@@ -154,7 +154,7 @@ let rec has_used_children all_occurrence_data module_occ =
   | _ -> false
 
 (* Filter out modules that have any used children *)
-let filter_modules_with_used_children unused_symbols all_occurrence_data =
+let filter_modules_with_used unused_symbols all_occurrence_data =
   if List.length unused_symbols > 0 then
     Log.info (fun m ->
         m "Filtering modules with used children: %d unused symbols to check"
@@ -196,7 +196,7 @@ let get_symbols_and_occurrences ~cache exclude_dirs root_dir files =
         Progress.update progress ~current:!processed
           (Fmt.str "Processing file: %s" display_path);
 
-        let symbols = get_exported_symbols_from_file ~cache root_dir file in
+        let symbols = get_file_symbols ~cache root_dir file in
         symbols @ acc)
       [] files
   in
@@ -213,6 +213,60 @@ let get_symbols_and_occurrences ~cache exclude_dirs root_dir files =
   (all_symbols, occurrence_data)
 
 (* Analyze symbols from files and find unused ones *)
+(* Find symbols that appear in multiple .mli files *)
+let find_multi_mli_symbols occurrence_data =
+  let mli_symbols =
+    List.filter
+      (fun sym -> Filename.check_suffix sym.symbol.location.file ".mli")
+      occurrence_data
+  in
+  let name_to_files = Hashtbl.create 10 in
+  List.iter
+    (fun occ ->
+      let files =
+        try Hashtbl.find name_to_files occ.symbol.name with Not_found -> []
+      in
+      if not (List.mem occ.symbol.location.file files) then
+        Hashtbl.replace name_to_files occ.symbol.name
+          (occ.symbol.location.file :: files))
+    mli_symbols;
+
+  Hashtbl.fold
+    (fun name files acc -> if List.length files > 1 then name :: acc else acc)
+    name_to_files []
+
+(* Fix symbols that appear in multiple .mli files by marking them as Used *)
+let fix_multi_mli_symbols occurrence_data multi_mli_names =
+  if multi_mli_names <> [] then (
+    Log.info (fun m ->
+        m "Found symbols in multiple .mli files: %s"
+          (String.concat ", " multi_mli_names));
+    List.map
+      (fun occ ->
+        if List.mem occ.symbol.name multi_mli_names && occ.usage_class = Unused
+        then { occ with usage_class = Used }
+        else occ)
+      occurrence_data)
+  else occurrence_data
+
+(* Filter occurrence data to get unused and excluded-only symbols *)
+let categorize_symbols occurrence_data =
+  let unused =
+    List.filter
+      (fun occ ->
+        match occ.usage_class with
+        | Unused -> true
+        | Unknown | Used | Used_only_in_excluded -> false)
+      occurrence_data
+  in
+  let excluded_only =
+    List.filter
+      (fun occ ->
+        match occ.usage_class with Used_only_in_excluded -> true | _ -> false)
+      occurrence_data
+  in
+  (unused, excluded_only)
+
 let analyze_files_for_unused ~cache exclude_dirs root_dir files =
   let _all_symbols, occurrence_data =
     get_symbols_and_occurrences ~cache exclude_dirs root_dir files
@@ -221,65 +275,16 @@ let analyze_files_for_unused ~cache exclude_dirs root_dir files =
   (* Post-process: if a symbol name appears in multiple .mli files, mark all as
      Used. This handles both re-exports and symbols accessible through module
      aliases. *)
-  let symbol_names_in_multiple_mlis =
-    let mli_symbols =
-      List.filter
-        (fun sym -> Filename.check_suffix sym.symbol.location.file ".mli")
-        occurrence_data
-    in
-    let name_to_files = Hashtbl.create 10 in
-    List.iter
-      (fun occ ->
-        let files =
-          try Hashtbl.find name_to_files occ.symbol.name with Not_found -> []
-        in
-        if not (List.mem occ.symbol.location.file files) then
-          Hashtbl.replace name_to_files occ.symbol.name
-            (occ.symbol.location.file :: files))
-      mli_symbols;
-
-    Hashtbl.fold
-      (fun name files acc -> if List.length files > 1 then name :: acc else acc)
-      name_to_files []
-  in
+  let multi_mli_names = find_multi_mli_symbols occurrence_data in
 
   let occurrence_data_fixed =
-    if symbol_names_in_multiple_mlis <> [] then (
-      Log.info (fun m ->
-          m "Found symbols in multiple .mli files: %s"
-            (String.concat ", " symbol_names_in_multiple_mlis));
-      List.map
-        (fun occ ->
-          if
-            List.mem occ.symbol.name symbol_names_in_multiple_mlis
-            && occ.usage_class = Unused
-          then { occ with usage_class = Used }
-          else occ)
-        occurrence_data)
-    else occurrence_data
+    fix_multi_mli_symbols occurrence_data multi_mli_names
   in
 
-  let unused =
-    List.filter
-      (fun occ ->
-        match occ.usage_class with
-        | Unused -> true
-        | Unknown | Used | Used_only_in_excluded -> false)
-      occurrence_data_fixed
-  in
+  let unused, excluded_only = categorize_symbols occurrence_data_fixed in
 
   (* Filter out modules that have used children *)
-  let filtered_unused =
-    filter_modules_with_used_children unused occurrence_data_fixed
-  in
-
-  (* Separate excluded-only symbols from truly unused ones *)
-  let excluded_only =
-    List.filter
-      (fun occ ->
-        match occ.usage_class with Used_only_in_excluded -> true | _ -> false)
-      occurrence_data_fixed
-  in
+  let filtered_unused = filter_modules_with_used unused occurrence_data_fixed in
 
   Log.info (fun m -> m "Found %d unused exports" (List.length filtered_unused));
   if List.length excluded_only > 0 then

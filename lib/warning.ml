@@ -197,15 +197,12 @@ let create_warning_info location name warning_type =
     Types.location;
     name;
     warning_type;
-    location_precision = Types.location_precision_of_warning_type warning_type;
+    location_precision = Types.precision_of_warning_type warning_type;
   }
 
 (* Parse signature mismatch errors from build output *)
-let parse_signature_mismatch_error lines =
-  (* Look for pattern: Error: The implementation "lib/base.ml" does not match
-     the interface "lib/base.ml": The value "missing_func" is required but not
-     provided File "lib/base.mli", line 2, characters 0-35: Expected
-     declaration *)
+(* Extract signature name from error line *)
+let extract_signature_name line =
   let value_required_re =
     Re.(
       compile
@@ -218,45 +215,61 @@ let parse_signature_mismatch_error lines =
              str " is required but not provided";
            ]))
   in
-  let rec find_error line_and_rest_pairs =
-    match line_and_rest_pairs with
-    | [] -> []
-    | (line, rest) :: remaining_pairs -> (
-        try
-          let groups = Re.exec value_required_re line in
-          let name = Re.Group.get groups 1 in
+  try
+    let groups = Re.exec value_required_re line in
+    Some (Re.Group.get groups 1)
+  with Not_found -> None
 
-          (* Look for the file location in the next few lines *)
-          let rec find_location lines_to_check =
-            match lines_to_check with
-            | [] -> None
-            | loc_line :: more -> (
-                match parse_warning_line loc_line with
-                | Some location
-                  when String.ends_with ~suffix:".mli" location.file ->
-                    let warning =
-                      create_warning_info location name Types.Signature_mismatch
-                    in
-                    Some warning
-                | _ -> find_location more)
-          in
-          (* Take next 3 lines to look for location *)
-          let next_lines =
-            match rest with
-            | l1 :: l2 :: l3 :: _ -> [ l1; l2; l3 ]
-            | lines -> lines
-          in
-          match find_location next_lines with
-          | Some warning -> warning :: find_error remaining_pairs
-          | None -> find_error remaining_pairs
-        with Not_found -> find_error remaining_pairs)
+(* Find location in the next few lines *)
+let find_mli_location lines_to_check =
+  let rec search = function
+    | [] -> None
+    | loc_line :: more -> (
+        match parse_warning_line loc_line with
+        | Some location when String.ends_with ~suffix:".mli" location.file ->
+            Some location
+        | _ -> search more)
   in
-  (* Create pairs of (line, remaining_lines) for easier processing *)
+  search lines_to_check
+
+(* Get next few lines to search for location *)
+let get_next_lines rest =
+  match rest with l1 :: l2 :: l3 :: _ -> [ l1; l2; l3 ] | lines -> lines
+
+(* Create pairs of (line, remaining_lines) *)
+let make_line_pairs lines =
   let rec make_pairs = function
     | [] -> []
     | line :: rest -> (line, rest) :: make_pairs rest
   in
-  find_error (make_pairs lines)
+  make_pairs lines
+
+(* Process a single line for signature mismatch *)
+let process_signature_line line rest =
+  match extract_signature_name line with
+  | None -> []
+  | Some name -> (
+      let next_lines = get_next_lines rest in
+      match find_mli_location next_lines with
+      | Some location ->
+          let warning =
+            create_warning_info location name Types.Signature_mismatch
+          in
+          [ warning ]
+      | None -> [])
+
+let parse_signature_mismatch_error lines =
+  (* Look for pattern: Error: The implementation "lib/base.ml" does not match
+     the interface "lib/base.ml": The value "missing_func" is required but not
+     provided File "lib/base.mli", line 2, characters 0-35: Expected
+     declaration *)
+  let rec find_error = function
+    | [] -> []
+    | (line, rest) :: remaining_pairs ->
+        let warnings = process_signature_line line rest in
+        warnings @ find_error remaining_pairs
+  in
+  find_error (make_line_pairs lines)
 
 (* Parse warnings using a simpler approach - scan for all warning messages
    first, then match with locations *)

@@ -174,9 +174,7 @@ let test_module_filtering () =
   let unused = List.filter (fun occ -> occ.occurrences = 0) occurrence_data in
 
   (* Apply module filtering *)
-  let filtered =
-    Analysis.filter_modules_with_used_children unused occurrence_data
-  in
+  let filtered = Analysis.filter_modules_with_used unused occurrence_data in
 
   (* Module M should be filtered out because it contains used symbol foo *)
   check int "only bar should remain" 1 (List.length filtered);

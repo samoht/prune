@@ -32,7 +32,7 @@ val get_all_symbol_occurrences :
 
 (** {2 Internal functions exposed for testing} *)
 
-val filter_modules_with_used_children :
+val filter_modules_with_used :
   occurrence_info list -> occurrence_info list -> occurrence_info list
-(** [filter_modules_with_used_children unused_symbols all_occurrence_data]
-    filters out modules from the unused list that contain any used symbols. *)
+(** [filter_modules_with_used unused_symbols all_occurrence_data] filters out
+    modules from the unused list that contain any used symbols. *)
