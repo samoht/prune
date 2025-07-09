@@ -13,10 +13,10 @@ let err_file_write file msg = err "Failed to write %s: %s" file msg
 let err_field_info_detection msg =
   Fmt.failwith "Field info detection failed: %s" msg
 
-let err_no_eq_in_type_decl line =
+let err_no_type_eq line =
   Fmt.failwith "Expected to find '=' in type declaration at line %d" line
 
-let err_ast_item_bounds_failed msg =
+let err_ast_bounds_failed msg =
   Fmt.failwith "AST-based item bounds detection failed: %s" msg
 
 (* Warning helpers *)
@@ -78,7 +78,7 @@ let get_enclosing_expression _root_dir file line col ~location_precision ~kind
       (* Even for exact bounds, we might need to include attributes *)
       if include_attributes then (
         match Locate.get_item_with_docs ~cache ~file ~line ~col with
-        | Error (`Msg msg) -> err_ast_item_bounds_failed msg
+        | Error (`Msg msg) -> err_ast_bounds_failed msg
         | Ok loc ->
             Log.debug (fun m ->
                 m "get_item_with_docs returned location %d-%d for %s:%d:%d"
@@ -101,13 +101,13 @@ let get_enclosing_expression _root_dir file line col ~location_precision ~kind
                      back to item detection"
                     file line col msg);
               match Locate.get_item_with_docs ~cache ~file ~line ~col with
-              | Error (`Msg msg2) -> err_ast_item_bounds_failed msg2
+              | Error (`Msg msg2) -> err_ast_bounds_failed msg2
               | Ok loc -> Some loc)
           | Ok loc -> Some loc)
       | _ -> (
           (* For other kinds, use the standard item detection *)
           match Locate.get_item_with_docs ~cache ~file ~line ~col with
-          | Error (`Msg msg) -> err_ast_item_bounds_failed msg
+          | Error (`Msg msg) -> err_ast_bounds_failed msg
           | Ok loc -> Some loc))
   | Needs_field_usage_parsing ->
       failwith
@@ -481,7 +481,7 @@ let replace_type_record_with_unit cache file loc =
       | None ->
           Log.err (fun m ->
               m "Type definition has no equals sign at line %d" loc.start_line);
-          err_no_eq_in_type_decl loc.start_line
+          err_no_type_eq loc.start_line
       | Some eq_loc -> (
           (* Replace from after the equals sign to the end with " unit" *)
           match Cache.get_line cache file eq_loc.start_line with

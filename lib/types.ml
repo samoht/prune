@@ -303,54 +303,55 @@ let position_of_json = function
       | _ -> None)
   | _ -> None
 
-let rec outline_item_of_json file_str = function
-  | `Assoc props -> (
-      match
-        ( List.assoc_opt "kind" props,
-          List.assoc_opt "name" props,
-          List.assoc_opt "start" props,
-          List.assoc_opt "end" props )
-      with
-      | Some (`String kind_str), Some (`String name), Some start_json, end_json
-        -> (
-          match symbol_kind_of_string kind_str with
-          | None -> None (* Unknown kind, skip this item *)
-          | Some kind -> (
-              match position_of_json start_json with
-              | None -> None
-              | Some (start_line, start_col) ->
-                  let end_line, end_col =
-                    match end_json with
-                    | Some pos -> (
-                        match position_of_json pos with
-                        | Some (el, ec) -> (el, ec)
-                        | None -> (start_line, start_col))
-                    | None -> (start_line, start_col)
-                  in
-                  let location =
-                    {
-                      file = file_str;
-                      start_line;
-                      start_col;
-                      end_line;
-                      end_col;
-                    }
-                  in
-                  let children =
-                    match List.assoc_opt "children" props with
-                    | Some (`List children_json) ->
-                        let parsed_children =
-                          List.filter_map
-                            (outline_item_of_json file_str)
-                            children_json
-                        in
-                        if parsed_children = [] then None
-                        else Some parsed_children
-                    | _ -> None
-                  in
-                  Some { kind; name; location; children }))
-      | _ -> None)
+(* Extract end position with fallback to start position *)
+let extract_end_position end_json start_line start_col =
+  match end_json with
+  | Some pos -> (
+      match position_of_json pos with
+      | Some (el, ec) -> (el, ec)
+      | None -> (start_line, start_col))
+  | None -> (start_line, start_col)
+
+(* Parse children items from JSON *)
+let rec parse_children file_str props =
+  match List.assoc_opt "children" props with
+  | Some (`List children_json) ->
+      let parsed_children =
+        List.filter_map (outline_item_of_json file_str) children_json
+      in
+      if parsed_children = [] then None else Some parsed_children
   | _ -> None
+
+and outline_item_of_json file_str = function
+  | `Assoc props -> parse_outline_props file_str props
+  | _ -> None
+
+and parse_outline_props file_str props =
+  match
+    ( List.assoc_opt "kind" props,
+      List.assoc_opt "name" props,
+      List.assoc_opt "start" props,
+      List.assoc_opt "end" props )
+  with
+  | Some (`String kind_str), Some (`String name), Some start_json, end_json ->
+      parse_outline_item file_str kind_str name start_json end_json props
+  | _ -> None
+
+and parse_outline_item file_str kind_str name start_json end_json props =
+  match symbol_kind_of_string kind_str with
+  | None -> None (* Unknown kind, skip this item *)
+  | Some kind -> (
+      match position_of_json start_json with
+      | None -> None
+      | Some (start_line, start_col) ->
+          let end_line, end_col =
+            extract_end_position end_json start_line start_col
+          in
+          let location =
+            { file = file_str; start_line; start_col; end_line; end_col }
+          in
+          let children = parse_children file_str props in
+          Some { kind; name; location; children })
 
 let occurrence_location_of_json file = function
   | `Assoc props -> (
