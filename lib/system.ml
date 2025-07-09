@@ -344,14 +344,31 @@ let classify_build_error ctx =
         in
         Types.Other_errors output_excerpt
 
+(* Count all errors in build output, including syntax errors *)
+let count_all_errors output =
+  let lines = String.split_on_char '\n' output in
+  List.fold_left
+    (fun count line ->
+      let line = String.trim line in
+      (* Count lines that start with "Error:" or contain "error" after file
+         location *)
+      if String.length line > 6 && String.sub line 0 6 = "Error:" then count + 1
+      else if
+        Re.execp
+          (Re.compile
+             (Re.seq [ Re.str "characters"; Re.rep Re.any; Re.str ": Error" ]))
+          line
+      then count + 1
+      else count)
+    0 lines
+
 (* Helper to display build error and exit *)
 let display_build_failure_and_exit ctx =
-  let all_warnings =
+  let total_error_count =
     match Types.get_last_build_result ctx with
-    | Some result -> result.warnings (* Use already parsed warnings *)
-    | None -> []
+    | Some result -> count_all_errors result.output
+    | None -> 0
   in
-  let total_error_count = List.length all_warnings in
 
   (* Display build failure consistently *)
   Fmt.pr "%a with %d %s - full output:@."

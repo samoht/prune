@@ -169,38 +169,45 @@ let write cache file =
               a logic error in the removal process."
              file);
 
-      Log.info (fun m -> m "Writing modified content to disk: %s" file);
-      (* Log diffs *)
-      Log.debug (fun m ->
-          m "Found %d diffs for file %s" (List.length entry.diffs) file);
-      List.iter
-        (fun diff ->
+      (* Check if file exists before attempting to write *)
+      let file_path = Fpath.v file in
+      match OS.Path.exists file_path with
+      | Error (`Msg msg) -> err "Failed to check file existence: %s" msg
+      | Ok false -> err "File %s does not exist" file
+      | Ok true -> (
+          Log.info (fun m -> m "Writing modified content to disk: %s" file);
+          (* Log diffs *)
           Log.debug (fun m ->
-              m "  Line %d: '%s' -> '%s'" diff.line_num diff.old_content
-                diff.new_content))
-        (List.rev entry.diffs);
+              m "Found %d diffs for file %s" (List.length entry.diffs) file);
+          List.iter
+            (fun diff ->
+              Log.debug (fun m ->
+                  m "  Line %d: '%s' -> '%s'" diff.line_num diff.old_content
+                    diff.new_content))
+            (List.rev entry.diffs);
 
-      (* Reverse to show in chronological order *)
+          (* Reverse to show in chronological order *)
 
-      (* Clear diffs after writing *)
-      entry.diffs <- [];
-      let result =
-        OS.File.with_output (Fpath.v file)
-          (fun oc () ->
-            (* Write all lines, preserving line numbers *)
-            Array.iteri
-              (fun i line ->
-                oc (Some (Bytes.of_string line, 0, String.length line));
-                if i < Array.length entry.lines - 1 then
-                  oc (Some (Bytes.of_string "\n", 0, 1)))
-              entry.lines;
-            Ok ())
-          ()
-      in
-      match result with
-      | Ok (Ok ()) ->
-          Log.debug (fun m -> m "Successfully flushed file to disk: %s" file);
-          Ok ()
-      | Ok (Error (`Msg msg)) | Error (`Msg msg) ->
-          Log.err (fun m -> m "Failed to write file %s: %s" file msg);
-          Error (`Msg msg))
+          (* Clear diffs after writing *)
+          entry.diffs <- [];
+          let result =
+            OS.File.with_output (Fpath.v file)
+              (fun oc () ->
+                (* Write all lines, preserving line numbers *)
+                Array.iteri
+                  (fun i line ->
+                    oc (Some (Bytes.of_string line, 0, String.length line));
+                    if i < Array.length entry.lines - 1 then
+                      oc (Some (Bytes.of_string "\n", 0, 1)))
+                  entry.lines;
+                Ok ())
+              ()
+          in
+          match result with
+          | Ok (Ok ()) ->
+              Log.debug (fun m ->
+                  m "Successfully flushed file to disk: %s" file);
+              Ok ()
+          | Ok (Error (`Msg msg)) | Error (`Msg msg) ->
+              Log.err (fun m -> m "Failed to write file %s: %s" file msg);
+              Error (`Msg msg)))
