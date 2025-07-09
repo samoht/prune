@@ -366,6 +366,18 @@ let process_removal_operation root_dir file cache operation =
       process_character_removal root_dir file cache operation
 
 (* Remove unused exports from a file *)
+(* Convert symbols to warnings for uniform processing *)
+let symbols_to_warnings symbols =
+  List.map
+    (fun (sym : symbol_info) ->
+      {
+        location = sym.location;
+        name = sym.name;
+        warning_type = Signature_mismatch;
+        location_precision = Exact_definition;
+      })
+    symbols
+
 let remove_unused_exports ~cache root_dir file (symbols : symbol_info list) =
   Log.info (fun m ->
       m "remove_unused_exports called for %s with %d symbols" file
@@ -378,17 +390,7 @@ let remove_unused_exports ~cache root_dir file (symbols : symbol_info list) =
     | Error (`Msg m) -> err_file_read file m
     | Ok () -> (
         (* Convert symbols to warnings for uniform processing *)
-        let warnings =
-          List.map
-            (fun (sym : symbol_info) ->
-              {
-                location = sym.location;
-                name = sym.name;
-                warning_type = Signature_mismatch;
-                location_precision = Exact_definition;
-              })
-            symbols
-        in
+        let warnings = symbols_to_warnings symbols in
         (* Create removal operations *)
         let operations =
           List.map (create_removal_operation root_dir file cache) warnings

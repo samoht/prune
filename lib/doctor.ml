@@ -198,25 +198,22 @@ let check_build_artifacts root_dir =
           })
 
 (* Test merlin on a sample file *)
+(* Create test result for merlin occurrences *)
+let make_merlin_test_result ?(details = []) passed message =
+  { check_name = "Merlin occurrences test"; passed; message; details }
+
 let test_merlin_occurrences root_dir sample_mli =
   (* Check if it's a directory *)
   match OS.Dir.exists (Fpath.v sample_mli) with
   | Ok true ->
-      {
-        check_name = "Merlin occurrences test";
-        passed = false;
-        message = Printf.sprintf "%s is a directory, not a file" sample_mli;
-        details = [ "Provide a .mli file to test merlin occurrences" ];
-      }
+      make_merlin_test_result false
+        (Printf.sprintf "%s is a directory, not a file" sample_mli)
+        ~details:[ "Provide a .mli file to test merlin occurrences" ]
   | _ -> (
       match OS.File.exists (Fpath.v sample_mli) with
       | Ok false | Error _ ->
-          {
-            check_name = "Merlin occurrences test";
-            passed = false;
-            message = Printf.sprintf "Sample file %s not found" sample_mli;
-            details = [];
-          }
+          make_merlin_test_result false
+            (Printf.sprintf "Sample file %s not found" sample_mli)
       | Ok true -> (
           (* Try to get occurrences for the first value in the file *)
           let cmd =
@@ -227,12 +224,7 @@ let test_merlin_occurrences root_dir sample_mli =
           in
           match run_with_timeout cmd with
           | Error _ ->
-              {
-                check_name = "Merlin occurrences test";
-                passed = false;
-                message = "Failed to run merlin occurrences";
-                details = [];
-              }
+              make_merlin_test_result false "Failed to run merlin occurrences"
           | Ok output -> (
               (* Check if output contains expected JSON structure *)
               match parse_merlin_response output with
@@ -252,23 +244,16 @@ let test_merlin_occurrences root_dir sample_mli =
                         ]
                     | _ -> []
                   in
-                  {
-                    check_name = "Merlin occurrences test";
-                    passed = true;
-                    message = "Merlin occurrences command works";
-                    details;
-                  }
+                  make_merlin_test_result true
+                    "Merlin occurrences command works" ~details
               | _ ->
-                  {
-                    check_name = "Merlin occurrences test";
-                    passed = false;
-                    message = "Merlin returned unexpected output";
-                    details =
+                  make_merlin_test_result false
+                    "Merlin returned unexpected output"
+                    ~details:
                       [
                         "Output: "
                         ^ String.sub output 0 (min 200 (String.length output));
-                      ];
-                  })))
+                      ])))
 
 (* Check if dune @ocaml-index target exists *)
 let check_dune_available () =

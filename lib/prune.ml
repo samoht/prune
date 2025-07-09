@@ -299,77 +299,80 @@ let iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files =
 type mode = [ `Dry_run | `Single_pass | `Iterative ]
 
 (* Unified analyze function that handles all modes *)
+(* Handle dry run mode *)
+let analyze_dry_run ~cache ~exclude_dirs root_dir mli_files =
+  with_built_project root_dir (fun _ctx ->
+      find_unused_exports ~cache ~exclude_dirs root_dir mli_files
+      >>= fun (unused_by_file, excluded_only_by_file) ->
+      match (unused_by_file, excluded_only_by_file) with
+      | [], [] ->
+          Fmt.pr "  ";
+          Output.success "No unused exports found!";
+          Ok empty_stats
+      | _ ->
+          (* Display unused exports *)
+          if List.length unused_by_file > 0 then display_exports unused_by_file;
+
+          (* Display excluded-only exports separately *)
+          if List.length excluded_only_by_file > 0 then (
+            Output.warning "Some exports are only used in excluded directories";
+            display_exports ~label:"used only in excluded dirs"
+              excluded_only_by_file);
+
+          let total =
+            count_total_symbols (unused_by_file @ excluded_only_by_file)
+          in
+          Ok { empty_stats with mli_exports_removed = total })
+
+(* Handle single pass mode *)
+let analyze_single_pass ~cache ~yes ~exclude_dirs root_dir mli_files =
+  with_built_project root_dir (fun _ctx ->
+      find_unused_exports ~cache ~exclude_dirs root_dir mli_files
+      >>= fun (unused_by_file, excluded_only_by_file) ->
+      (* Combine unused and excluded-only exports for removal *)
+      let all_removable = unused_by_file @ excluded_only_by_file in
+      match all_removable with
+      | [] ->
+          Fmt.pr "  ";
+          Output.success "No unused exports found!";
+          Ok empty_stats
+      | _ ->
+          (* Display both types of exports *)
+          if List.length unused_by_file > 0 then
+            display_exports ~no_exports_msg:"" unused_by_file;
+          if List.length excluded_only_by_file > 0 then
+            display_exports ~label:"used only in excluded dirs"
+              excluded_only_by_file;
+          if yes || confirm_removal () then
+            (* Convert to symbol_info for removal *)
+            let symbol_by_file =
+              List.map
+                (fun (file, occs) ->
+                  (file, List.map (fun occ -> occ.symbol) occs))
+                all_removable
+            in
+            perform_unused_exports_removal ~cache root_dir symbol_by_file
+            >>= fun () ->
+            let total = count_total_symbols symbol_by_file in
+            let lines_removed = Cache.count_lines_removed cache in
+            Ok
+              {
+                empty_stats with
+                mli_exports_removed = total;
+                lines_removed;
+                iterations = 1;
+              }
+          else (
+            Fmt.pr "Aborted - no files were modified.@.";
+            Ok empty_stats))
+
 let analyze ?(yes = false) ?(exclude_dirs = []) mode root_dir mli_files =
   let cache = Cache.create () in
   let result =
     match mode with
-    | `Dry_run ->
-        (* Dry run mode - just report without modifying *)
-        with_built_project root_dir (fun _ctx ->
-            find_unused_exports ~cache ~exclude_dirs root_dir mli_files
-            >>= fun (unused_by_file, excluded_only_by_file) ->
-            match (unused_by_file, excluded_only_by_file) with
-            | [], [] ->
-                Fmt.pr "  ";
-                Output.success "No unused exports found!";
-                Ok empty_stats
-            | _ ->
-                (* Display unused exports *)
-                if List.length unused_by_file > 0 then
-                  display_exports unused_by_file;
-
-                (* Display excluded-only exports separately *)
-                if List.length excluded_only_by_file > 0 then (
-                  Output.warning
-                    "Some exports are only used in excluded directories";
-                  display_exports ~label:"used only in excluded dirs"
-                    excluded_only_by_file);
-
-                let total =
-                  count_total_symbols (unused_by_file @ excluded_only_by_file)
-                in
-                Ok { empty_stats with mli_exports_removed = total })
+    | `Dry_run -> analyze_dry_run ~cache ~exclude_dirs root_dir mli_files
     | `Single_pass ->
-        (* Single pass mode - remove exports once *)
-        with_built_project root_dir (fun _ctx ->
-            find_unused_exports ~cache ~exclude_dirs root_dir mli_files
-            >>= fun (unused_by_file, excluded_only_by_file) ->
-            (* Combine unused and excluded-only exports for removal *)
-            let all_removable = unused_by_file @ excluded_only_by_file in
-            match all_removable with
-            | [] ->
-                Fmt.pr "  ";
-                Output.success "No unused exports found!";
-                Ok empty_stats
-            | _ ->
-                (* Display both types of exports *)
-                if List.length unused_by_file > 0 then
-                  display_exports ~no_exports_msg:"" unused_by_file;
-                if List.length excluded_only_by_file > 0 then
-                  display_exports ~label:"used only in excluded dirs"
-                    excluded_only_by_file;
-                if yes || confirm_removal () then
-                  (* Convert to symbol_info for removal *)
-                  let symbol_by_file =
-                    List.map
-                      (fun (file, occs) ->
-                        (file, List.map (fun occ -> occ.symbol) occs))
-                      all_removable
-                  in
-                  perform_unused_exports_removal ~cache root_dir symbol_by_file
-                  >>= fun () ->
-                  let total = count_total_symbols symbol_by_file in
-                  let lines_removed = Cache.count_lines_removed cache in
-                  Ok
-                    {
-                      empty_stats with
-                      mli_exports_removed = total;
-                      lines_removed;
-                      iterations = 1;
-                    }
-                else (
-                  Fmt.pr "Aborted - no files were modified.@.";
-                  Ok empty_stats))
+        analyze_single_pass ~cache ~yes ~exclude_dirs root_dir mli_files
     | `Iterative ->
         iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files
   in
