@@ -53,13 +53,14 @@ Run prune with -f for automatic removal:
   
   
     Iteration 1:
-    Removed 2 exports
+  Removing 2 unused exports...
+  ✓ lib/test_lib.mli
     Fixed 2 errors
   
     Iteration 2:
   ✓ No more unused code found
   
-  Summary: removed 2 exports and 2 implementations in 1 iteration (8 lines total)
+  Summary: removed 2 exports and 2 implementations in 1 iteration (6 lines total)
 
 Verify unused items were removed from interface:
   $ cat lib/test_lib.mli
@@ -69,13 +70,13 @@ Verify unused items were removed from interface:
   
   
   
-  
+  (** A type that is used *)
   type used_type = int
   
   
   
   
-  
+  (** An exception that is used *)
   exception Used_error
   
   (** An exception that is never used *)

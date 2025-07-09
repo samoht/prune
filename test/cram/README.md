@@ -208,9 +208,13 @@ Use multiple modules to test dependency detection across module boundaries.
 
 2. Enable debug logging for specific cram tests:
    ```
-   $ PRUNE_VERBOSE=debug dune build @test/cram/specific_files
+   $ PRUNE_VERBOSE=debug dune build @test/cram/test_name
    ```
-   This shows detailed merlin interactions and helps debug "Invalid outline response" errors.
+   For example:
+   ```
+   $ PRUNE_VERBOSE=debug dune build @test/cram/trailing_doc_comments
+   ```
+   This shows detailed merlin interactions and helps debug issues with comment removal, symbol detection, and build errors.
 
 3. Check merlin's view of the code:
    ```

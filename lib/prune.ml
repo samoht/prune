@@ -63,19 +63,6 @@ let count_total_symbols unused_by_file =
     (fun acc (_, symbols) -> acc + List.length symbols)
     0 unused_by_file
 
-(* Apply removal operations and collect first error if any *)
-let apply_removals ~cache root_dir unused_by_file =
-  let results =
-    List.map
-      (fun (file, symbols) ->
-        remove_unused_exports ~cache root_dir file symbols)
-      unused_by_file
-  in
-  let errors =
-    List.filter_map (function Error e -> Some e | Ok () -> None) results
-  in
-  match errors with [] -> Ok () | e :: _ -> Error e
-
 (* Compare symbol_info by line number *)
 let compare_symbol_info (a : symbol_info) (b : symbol_info) =
   compare a.location.start_line b.location.start_line
@@ -115,15 +102,25 @@ let perform_unused_exports_removal ~cache root_dir unused_by_file =
   let total = count_total_symbols unused_by_file in
   Fmt.pr "Removing %d unused exports...@." total;
 
-  List.iter
-    (fun (file, symbols) ->
-      let relative_file = get_relative_path root_dir file in
-      match remove_unused_exports ~cache root_dir file symbols with
-      | Ok () -> Fmt.pr "✓ %s@." relative_file
-      | Error e -> Fmt.pr "✗ %s: %a@." relative_file pp_error e)
-    unused_by_file;
+  let results =
+    List.map
+      (fun (file, symbols) ->
+        let relative_file = get_relative_path root_dir file in
+        match remove_unused_exports ~cache root_dir file symbols with
+        | Ok () ->
+            Fmt.pr "✓ %s@." relative_file;
+            Ok ()
+        | Error e ->
+            Fmt.pr "✗ %s: %a@." relative_file pp_error e;
+            Error e)
+      unused_by_file
+  in
 
-  apply_removals ~cache root_dir unused_by_file
+  (* Return the first error if any *)
+  let errors =
+    List.filter_map (function Error e -> Some e | Ok () -> None) results
+  in
+  match errors with [] -> Ok () | e :: _ -> Error e
 
 (* {2 Public interface functions} *)
 
@@ -179,18 +176,20 @@ let process_unused_exports ~cache ~yes ~iteration root_dir all_removable =
       Fmt.pr "Cancelled - no changes made@.";
       Error (`Msg "Cancelled by user"))
     else
-      match apply_removals ~cache root_dir (extract_symbols all_removable) with
+      match
+        perform_unused_exports_removal ~cache root_dir
+          (extract_symbols all_removable)
+      with
       | Error e -> Error e
-      | Ok () ->
-          Fmt.pr "  Removed %d exports@." count;
-          Ok count)
+      | Ok () -> Ok count)
   (* Subsequent iterations or --force mode: no prompt *)
     else
-    match apply_removals ~cache root_dir (extract_symbols all_removable) with
+    match
+      perform_unused_exports_removal ~cache root_dir
+        (extract_symbols all_removable)
+    with
     | Error e -> Error e
-    | Ok () ->
-        Fmt.pr "  Removed %d exports@." count;
-        Ok count
+    | Ok () -> Ok count
 
 (* Find and remove unused exports from .mli files *)
 let find_and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir

@@ -48,13 +48,14 @@ Run iterative cleanup:
     Fixed 2 errors
   
     Iteration 2:
-    Removed 7 exports
+  Removing 7 unused exports...
+  ✓ lib/testlib.mli
     Fixed 8 errors
   
     Iteration 3:
   ✓ No more unused code found
   
-  Summary: removed 7 exports and 10 implementations in 2 iterations (27 lines total)
+  Summary: removed 7 exports and 10 implementations in 2 iterations (25 lines total)
 
 The cleanup removed:
 - unused_export and its helper

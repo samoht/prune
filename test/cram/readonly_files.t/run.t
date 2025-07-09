@@ -19,7 +19,7 @@ Test dry-run mode works with read-only files:
 
 Test that force mode fails appropriately with read-only files:
   $ prune clean . --force 2>&1 | grep -E "(Error|Permission|readonly)" || echo "Command succeeded unexpectedly"
-  Command succeeded unexpectedly
+  ✓ lib/readonly.mli
 
 Restore write permissions for cleanup:
   $ chmod 644 lib/readonly.mli

@@ -19,7 +19,8 @@ Run prune to clean all warnings:
     Fixed 4 errors
   
     Iteration 2:
-    Removed 2 exports
+  Removing 2 unused exports...
+  ✓ lib/mixed.mli
     Fixed 2 errors
   
     Iteration 3:

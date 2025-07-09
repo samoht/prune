@@ -182,9 +182,12 @@ let main_function () =
       (* Check that we got the helper_function item with surrounding space *)
       check_contains temp_file location "let helper_function x = x + 1"
         "location contains helper_function";
-      (* Should extend to include blank line after *)
-      check_contains temp_file location "\n\n"
-        "location includes blank line after";
+      (* Location should only include the single line with the function *)
+      let content = extract_location_text temp_file location in
+      let lines =
+        String.split_on_char '\n' content |> List.filter (fun s -> s <> "")
+      in
+      check int "location includes only the function line" 1 (List.length lines);
       cleanup_temp_file temp_file
   | Error (`Msg msg) ->
       cleanup_temp_file temp_file;
@@ -333,15 +336,14 @@ type color = Red | Green | Blue
   | Ok location ->
       let extracted_text = extract_location_text temp_file location in
       cleanup_temp_file temp_file;
-      (* Should detect the full type definition *)
-      (* With neighbor approach, extends to just before next item *)
+      (* Should detect the full type definition with its doc comment *)
+      (* But NOT include the blank line and next item's doc comment *)
       check string "type declaration content"
         "(** A simple record type *)\n\
          type person = {\n\
         \  name : string;\n\
         \  age : int;\n\
-         }\n\n\
-         (** A variant type *)"
+         }"
         (String.trim extracted_text)
   | Error (`Msg msg) ->
       cleanup_temp_file temp_file;

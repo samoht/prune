@@ -24,7 +24,8 @@ Remove the unused exports:
   
   
     Iteration 1:
-    Removed 2 exports
+  Removing 2 unused exports...
+  ✓ lib/cleanlib.mli
     Fixed 2 errors
   
     Iteration 2:

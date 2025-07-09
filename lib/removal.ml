@@ -76,10 +76,14 @@ let get_enclosing_expression _root_dir file line col ~location_precision ~kind
   match location_precision with
   | Exact_definition | Exact_statement ->
       (* Even for exact bounds, we might need to include attributes *)
-      if include_attributes then
+      if include_attributes then (
         match Locate.get_item_with_docs ~cache ~file ~line ~col with
         | Error (`Msg msg) -> err_ast_item_bounds_failed msg
-        | Ok loc -> Some loc
+        | Ok loc ->
+            Log.debug (fun m ->
+                m "get_item_with_docs returned location %d-%d for %s:%d:%d"
+                  loc.start_line loc.end_line file line col);
+            Some loc)
       else None (* Use the exact bounds provided *)
   | Needs_enclosing_definition -> (
       (* For value warnings, look specifically for value bindings *)
@@ -133,8 +137,18 @@ let process_line_removal cache file operation =
   | Line_removal { include_comments = _ } ->
       let loc =
         match operation.context.enclosing with
-        | Some enc -> enc
-        | None -> operation.location
+        | Some enc ->
+            Log.debug (fun m ->
+                m "Using enclosing location for %s: %d-%d (original: %d-%d)"
+                  operation.context.warning.name enc.start_line enc.end_line
+                  operation.location.start_line operation.location.end_line);
+            enc
+        | None ->
+            Log.debug (fun m ->
+                m "Using original location for %s: %d-%d"
+                  operation.context.warning.name operation.location.start_line
+                  operation.location.end_line);
+            operation.location
       in
       let to_remove =
         mark_lines_for_removal cache file loc.start_line loc.end_line
@@ -263,6 +277,9 @@ let create_removal_operation root_dir file cache (warning : warning_info) :
   let enclosing =
     match (warning.location_precision, strategy) with
     | Needs_enclosing_definition, Line_removal { include_comments } ->
+        Log.debug (fun m ->
+            m "Getting enclosing expression for %s (Needs_enclosing_definition)"
+              warning.name);
         get_enclosing_expression root_dir file warning.location.start_line
           warning.location.start_col
           ~location_precision:warning.location_precision
@@ -271,11 +288,17 @@ let create_removal_operation root_dir file cache (warning : warning_info) :
     | Exact_definition, Line_removal { include_comments }
       when warning.warning_type = Signature_mismatch
            && Filename.check_suffix file ".mli" ->
-        get_enclosing_expression root_dir file warning.location.start_line
-          warning.location.start_col
-          ~location_precision:warning.location_precision
-          ~kind:(symbol_kind_of_warning_type warning.warning_type)
-          ~name:warning.name ~cache ~include_attributes:include_comments
+        Log.debug (fun m ->
+            m
+              "Extending location for %s (Signature_mismatch in .mli) \
+               include_comments=%b"
+              warning.name include_comments);
+        (* For signature mismatches in .mli files, directly extend the location
+           with comments rather than trying to find the AST item *)
+        if include_comments then
+          Some
+            (Comments.extend_location_with_comments cache file warning.location)
+        else None
     | Needs_field_usage_parsing, Character_removal Field_usage -> (
         (* For field usage, use the new comprehensive field info *)
         match
@@ -294,12 +317,19 @@ let create_removal_operation root_dir file cache (warning : warning_info) :
 (* {1 Result application} *)
 
 (* Apply removal result to cache *)
-let apply_removal_result file cache result _context =
+let apply_removal_result file cache result context =
   match result with
   | Lines_removed to_remove ->
+      Log.debug (fun m ->
+          m "Applying line removal for %s: %d lines marked" context.warning.name
+            (Array.fold_left
+               (fun acc b -> if b then acc + 1 else acc)
+               0 to_remove));
       Array.iteri
         (fun i should_remove ->
-          if should_remove then Cache.clear_line cache file (i + 1))
+          if should_remove then (
+            Log.debug (fun m -> m "  Clearing line %d" (i + 1));
+            Cache.clear_line cache file (i + 1)))
         to_remove
   | Characters_replaced replacements ->
       List.iter
@@ -361,6 +391,14 @@ let remove_unused_exports ~cache root_dir file (symbols : symbol_info list) =
         (* Process each operation and apply results *)
         List.iter
           (fun op ->
+            Log.debug (fun m ->
+                m "Processing removal for %s at %s:%d-%d (enclosing: %s)"
+                  op.context.warning.name file op.location.start_line
+                  op.location.end_line
+                  (match op.context.enclosing with
+                  | None -> "none"
+                  | Some enc ->
+                      Printf.sprintf "%d-%d" enc.start_line enc.end_line));
             let result = process_removal_operation root_dir file cache op in
             apply_removal_result file cache result op.context)
           operations;

@@ -61,11 +61,9 @@ val bar : string -> string|}
     search 0
   in
 
-  (* The test shows the comment was removed - our fix stopped it from being
-     included with foo's removal, but the comment itself has no associated item
-     so it gets removed as an orphaned comment. This is actually correct
-     behavior. *)
-  check bool "Leading comment for bar was removed (orphaned comment)" false
+  (* The blank line stops the trailing comment scan, so the leading comment for
+     bar is NOT included in foo's removal and remains in the file *)
+  check bool "Leading comment for bar preserved (not part of foo)" true
     (contains new_content "Leading comment for bar");
   check bool "bar declaration should be preserved" true
     (contains new_content "val bar")

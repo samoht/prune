@@ -59,7 +59,9 @@ Test iterative mode with specific paths:
   
   
     Iteration 1:
-    Removed 2 exports
+  Removing 2 unused exports...
+  ✓ lib1/module1.mli
+  ✓ lib2/module2.mli
     Fixed 2 errors
   
     Iteration 2:

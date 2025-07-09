@@ -26,7 +26,8 @@ Run prune with --force to remove unused values:
     Fixed 1 error
   
     Iteration 2:
-    Removed 2 exports
+  Removing 2 unused exports...
+  ✓ lib/test.mli
     Fixed 2 errors
   
     Iteration 3:

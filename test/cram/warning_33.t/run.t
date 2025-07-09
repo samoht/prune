@@ -34,7 +34,8 @@ Run prune to fix all unused opens:
     Fixed 4 errors
   
     Iteration 2:
-    Removed 1 exports
+  Removing 1 unused exports...
+  ✓ lib/testlib.mli
     Fixed 1 error
   
     Iteration 3:

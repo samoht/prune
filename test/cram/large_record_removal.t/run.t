@@ -29,13 +29,14 @@ Test actual removal:
   
   
     Iteration 1:
-    Removed 2 exports
+  Removing 2 unused exports...
+  ✓ lib/testlib.mli
     Fixed 2 errors
   
     Iteration 2:
   ✓ No more unused code found
   
-  Summary: removed 2 exports and 2 implementations in 1 iteration (49 lines total)
+  Summary: removed 2 exports and 2 implementations in 1 iteration (48 lines total)
 
 Debug: Check build after removal:
   $ dune build 2>&1 || echo "Build failed with exit code $?"
@@ -71,7 +72,7 @@ Verify the large record type was completely removed:
   
   
   
-  
+  (** This is a used type *)
   type used_type = string
 
 This shows proper iterative behavior: exports are removed from .mli files first,

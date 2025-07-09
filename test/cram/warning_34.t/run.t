@@ -35,9 +35,9 @@ Run prune with --force to see it fix Warning 34 in the first iteration:
   prune: [DEBUG]   lib/test.ml:3:0-26: Unused_type internal_type
   3 | type internal_type = float  (* This will trigger Warning 34 *)
   Error (warning 34 [unused-type-declaration]): unused type internal_type.
+  prune: [DEBUG] Using original location for internal_type: 3-3
+  prune: [DEBUG] Applying line removal for internal_type: 1 lines marked
   prune: [DEBUG] replace_line lib/test.ml:3 'type internal_type = float  (* This will trigger Warning 34 *)' -> ''
-  prune: [DEBUG]   Line 3: 'type internal_type = float  (* This will trigger Warning 34 *)' -> ''
-    Fixed 1 error
 
 This demonstrates that prune:
 1. Detects Warning 34 errors in the build output

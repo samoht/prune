@@ -20,10 +20,6 @@ Run cleanup with step-wise to see each iteration:
   Found 1 unused exports
   Removing 1 unused exports...
   ✓ lib/cascadelib.mli
-  prune: internal error, uncaught exception:
-         Failure("AST-based item bounds detection failed: No signature item found at position")
-         
-  [125]
 
 After removing wrapper export, rebuild to check for warning 32:
   $ dune build 2>&1 | grep -A2 "warning 32" || echo "No warning 32"

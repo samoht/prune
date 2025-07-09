@@ -4,7 +4,6 @@ type output_mode = Normal | Quiet | Verbose | Json
 
 let current_mode = ref Normal
 let set_mode mode = current_mode := mode
-let get_mode () = !current_mode
 
 (* ANSI color codes *)
 let green = "\027[32m"
@@ -33,14 +32,6 @@ let get_terminal_width () =
       terminal_width := Some width;
       width
 
-(* Basic output functions *)
-let print fmt = Format.printf fmt
-let eprint fmt = Format.eprintf fmt
-
-let verbose fmt =
-  if !current_mode = Verbose then Format.printf fmt
-  else Format.ifprintf Format.std_formatter fmt
-
 (* Structured output *)
 let header fmt =
   if !current_mode <> Quiet then
@@ -50,10 +41,6 @@ let header fmt =
 let section fmt =
   if !current_mode <> Quiet then
     Format.kasprintf (fun s -> Format.printf "  %s@." s) fmt
-  else Format.ifprintf Format.std_formatter fmt
-
-let info fmt =
-  if !current_mode <> Quiet then Format.printf fmt
   else Format.ifprintf Format.std_formatter fmt
 
 let success fmt =

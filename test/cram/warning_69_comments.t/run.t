@@ -27,7 +27,8 @@ Remove what is detected:
   
   
     Iteration 1:
-    Removed 1 exports
+  Removing 1 unused exports...
+  ✓ lib/testlib.mli
   
     Iteration 2:
   ✓ No more unused code found

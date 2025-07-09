@@ -29,13 +29,14 @@ Remove the unused exports:
   
   
     Iteration 1:
-    Removed 4 exports
+  Removing 4 unused exports...
+  ✓ lib/doclib.mli
     Fixed 4 errors
   
     Iteration 2:
   ✓ No more unused code found
   
-  Summary: removed 4 exports and 4 implementations in 1 iteration (22 lines total)
+  Summary: removed 4 exports and 4 implementations in 1 iteration (20 lines total)
 
 Verify the result:
   $ cat lib/doclib.mli
@@ -65,9 +66,9 @@ Verify the result:
   
   
   
+  (* Regular comment after *)
   
-  
-  
+  (** Documentation for a used function *)
   val used_with_docs : int -> int
   (* This comment stays too *)
   

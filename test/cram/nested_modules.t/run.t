@@ -157,40 +157,41 @@ Let's apply prune's changes:
   
   
     Iteration 1:
-    Removed 13 exports
-    Fixed 15 errors
+  Removing 13 unused exports...
+  ✓ test_lib.mli
+    Fixed 11 errors
   
     Iteration 2:
-    Fixed 3 errors
+    Fixed 2 errors
   
     Iteration 3:
     Fixed 1 error
   
     Iteration 4:
-  Build failed with 0 errors - full output:
-  File "main.ml", line 3, characters 2-23:
-  3 |   Test_lib.Top.top_used ();
-        ^^^^^^^^^^^^^^^^^^^^^
-  Error: Unbound module "Test_lib.Top"
-  [1]
+  ✓ No more unused code found
+  
+  Summary: removed 13 exports and 14 implementations in 3 iterations (30 lines total)
 
 Check what happened to Store module in the .mli:
 
   $ diff -u test_lib.mli.bak test_lib.mli | grep -A3 -B3 "Store\|get\|set\|update" || true
-  -  type unused_type = int
-   
-  -  (** Internal store module - functions only used within this module *)
-  -  module Store : sig
+  +
+  +
+     (** Internal store module - functions only used within this module *)
+     module Store : sig
   -    val get : unit -> int
   -    val set : int -> unit
   -    val update : (int -> int) -> unit
-  -  end
+  +
+  +
+  +
+     end
    
   -  (** Functions that use Store internally *)
   -  val get_count : unit -> int
   -  val increment : unit -> unit
    
-  -  (** First level module *)
+  +
 
 The Store module's functions were removed from the .mli. Now let's see if this
 triggers warnings when we build:
@@ -204,12 +205,7 @@ Now run prune again to "fix" these warnings:
   
   
     Iteration 1:
-  Build failed with 0 errors - full output:
-  File "main.ml", line 3, characters 2-23:
-  3 |   Test_lib.Top.top_used ();
-        ^^^^^^^^^^^^^^^^^^^^^
-  Error: Unbound module "Test_lib.Top"
-  [1]
+    ✓ No unused code found
 
 Let's check if the Store module was completely removed:
 
@@ -219,7 +215,6 @@ Let's check if the Store module was completely removed:
 Verify the build is now broken:
 
   $ dune build 2>&1 | grep -E "Error:|Unbound module" | head -3
-  Error: Unbound module "Test_lib.Top"
 
 Expected vs Actual Behavior
 ===========================

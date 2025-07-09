@@ -121,7 +121,8 @@ let other = 33|}
   | Ok _ ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
-      (* Check that trailing doc comment was removed with the value *)
+      (* The trailing doc comment belongs to "value" since there's no blank
+         line *)
       check bool "trailing doc comment removed" false
         (Re.execp (Re.compile (Re.str "Trailing")) new_content);
       check bool "value removed" false

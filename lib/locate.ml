@@ -230,27 +230,12 @@ let find_type_definition file ast ~line ~col =
 let get_structure_item_bounds file ast ~line ~col =
   let items = Array.of_list ast in
   Array.find_mapi
-    (fun idx item ->
+    (fun _idx item ->
       let loc = location_of_ppxlib_location file item.pstr_loc in
       if location_contains loc ~line ~col then
-        (* Extend to include surrounding blank lines *)
-        let start_line =
-          if idx = 0 then 1
-          else
-            let prev_loc =
-              location_of_ppxlib_location file items.(idx - 1).pstr_loc
-            in
-            prev_loc.T.end_line + 1
-        in
-        let end_line =
-          if idx = Array.length items - 1 then loc.T.end_line
-          else
-            let next_loc =
-              location_of_ppxlib_location file items.(idx + 1).pstr_loc
-            in
-            max loc.T.end_line (next_loc.T.start_line - 1)
-        in
-        Some (to_full_lines (T.extend loc ~start_line ~end_line))
+        (* Return just the item bounds - comments will be added by
+           extend_location_with_comments *)
+        Some (to_full_lines loc)
       else None)
     items
 
@@ -260,31 +245,13 @@ let rec get_value_in_sig_module file module_type ~line ~col =
       (* Look for value declarations inside this module signature *)
       let items_array = Array.of_list items in
       Array.find_mapi
-        (fun idx item ->
+        (fun _idx item ->
           match item.psig_desc with
           | Psig_value vd ->
               let loc = location_of_ppxlib_location file vd.pval_loc in
               if location_contains loc ~line ~col then
-                (* Found the value declaration, extend with comments *)
-                let start_line =
-                  if idx = 0 then loc.T.start_line
-                  else
-                    let prev_loc =
-                      location_of_ppxlib_location file
-                        items_array.(idx - 1).psig_loc
-                    in
-                    max loc.T.start_line (prev_loc.T.end_line + 1)
-                in
-                let end_line =
-                  if idx = Array.length items_array - 1 then loc.T.end_line
-                  else
-                    let next_loc =
-                      location_of_ppxlib_location file
-                        items_array.(idx + 1).psig_loc
-                    in
-                    min loc.T.end_line (next_loc.T.start_line - 1)
-                in
-                Some (to_full_lines (T.extend loc ~start_line ~end_line))
+                (* Found the value declaration *)
+                Some (to_full_lines loc)
               else None
           | Psig_module md ->
               (* Recursively check inside nested modules *)
@@ -294,31 +261,21 @@ let rec get_value_in_sig_module file module_type ~line ~col =
   | _ -> None
 
 let get_signature_item_bounds file ast ~line ~col =
+  Log.debug (fun m ->
+      m "get_signature_item_bounds: looking for item at %s:%d:%d" file line col);
   let items = Array.of_list ast in
   Array.find_mapi
-    (fun idx item ->
+    (fun _idx item ->
       let loc = location_of_ppxlib_location file item.psig_loc in
-      if location_contains loc ~line ~col then
+      Log.debug (fun m ->
+          m "  Checking item at %d:%d-%d:%d" loc.start_line loc.start_col
+            loc.end_line loc.end_col);
+      if location_contains loc ~line ~col then (
+        Log.debug (fun m -> m "  Found matching item!");
         match item.psig_desc with
         | Psig_value _ ->
             (* For values, return just the value declaration bounds *)
-            let start_line =
-              if idx = 0 then 1
-              else
-                let prev_loc =
-                  location_of_ppxlib_location file items.(idx - 1).psig_loc
-                in
-                prev_loc.T.end_line + 1
-            in
-            let end_line =
-              if idx = Array.length items - 1 then loc.T.end_line
-              else
-                let next_loc =
-                  location_of_ppxlib_location file items.(idx + 1).psig_loc
-                in
-                max loc.T.end_line (next_loc.T.start_line - 1)
-            in
-            Some (to_full_lines (T.extend loc ~start_line ~end_line))
+            Some (to_full_lines loc)
         | Psig_module md -> (
             (* Check if we're inside a module - if so, find the specific
                value *)
@@ -326,43 +283,11 @@ let get_signature_item_bounds file ast ~line ~col =
             | Some bounds -> Some bounds
             | None ->
                 (* Not inside a value, return the whole module *)
-                let start_line =
-                  if idx = 0 then 1
-                  else
-                    let prev_loc =
-                      location_of_ppxlib_location file items.(idx - 1).psig_loc
-                    in
-                    prev_loc.T.end_line + 1
-                in
-                let end_line =
-                  if idx = Array.length items - 1 then loc.T.end_line
-                  else
-                    let next_loc =
-                      location_of_ppxlib_location file items.(idx + 1).psig_loc
-                    in
-                    max loc.T.end_line (next_loc.T.start_line - 1)
-                in
-                Some (to_full_lines (T.extend loc ~start_line ~end_line)))
+                Some (to_full_lines loc))
         | _ ->
             (* For other items (types, exceptions, etc.), return normal
                bounds *)
-            let start_line =
-              if idx = 0 then 1
-              else
-                let prev_loc =
-                  location_of_ppxlib_location file items.(idx - 1).psig_loc
-                in
-                prev_loc.T.end_line + 1
-            in
-            let end_line =
-              if idx = Array.length items - 1 then loc.T.end_line
-              else
-                let next_loc =
-                  location_of_ppxlib_location file items.(idx + 1).psig_loc
-                in
-                max loc.T.end_line (next_loc.T.start_line - 1)
-            in
-            Some (to_full_lines (T.extend loc ~start_line ~end_line))
+            Some (to_full_lines loc))
       else None)
     items
 
