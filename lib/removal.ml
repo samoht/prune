@@ -559,35 +559,38 @@ let process_field_removals ~cache ~root_dir ~file field_ops =
     (fun (_, ops_for_record) ->
       match ops_for_record with
       | [] -> ()
-      | (_, first_info) :: _ ->
+      | (_, first_info) :: _ -> (
           let fields_to_remove = List.length ops_for_record in
           let total_fields = first_info.Locate.total_fields in
+          let is_last_field = fields_to_remove = total_fields in
+          let field_context = first_info.Locate.context in
+          let loc = first_info.Locate.enclosing_record in
 
-          if fields_to_remove = total_fields then (
-            (* We're removing all fields - handle based on context *)
-            let loc = first_info.Locate.enclosing_record in
-            match first_info.Locate.context with
-            | `Type_definition ->
-                Log.info (fun m ->
-                    m
-                      "Removing all %d fields from record at line %d - \
-                       replacing with unit"
-                      total_fields loc.start_line);
-                replace_type_with_unit cache file loc
-            | `Record_construction ->
-                Log.info (fun m ->
-                    m
-                      "Removing all %d fields from record construction at line \
-                       %d - replacing with ()"
-                      total_fields loc.start_line);
-                replace_record_with_unit cache file loc)
-          else
-            (* Not removing all fields - process normally *)
-            List.iter
-              (fun (op, _) ->
-                let result = process_removal_operation root_dir file cache op in
-                apply_removal_result file cache result op.context)
-              ops_for_record)
+          (* Use single match statement for all field removal decisions *)
+          match (is_last_field, field_context) with
+          | true, `Type_definition ->
+              Log.info (fun m ->
+                  m
+                    "Removing all %d fields from record at line %d - replacing \
+                     with unit"
+                    total_fields loc.start_line);
+              replace_type_with_unit cache file loc
+          | true, `Record_construction ->
+              Log.info (fun m ->
+                  m
+                    "Removing all %d fields from record construction at line \
+                     %d - replacing with ()"
+                    total_fields loc.start_line);
+              replace_record_with_unit cache file loc
+          | false, _ ->
+              (* Not removing all fields - process each field individually *)
+              List.iter
+                (fun (op, _) ->
+                  let result =
+                    process_removal_operation root_dir file cache op
+                  in
+                  apply_removal_result file cache result op.context)
+                ops_for_record))
     by_record
 
 (* Group field operations by their type *)

@@ -72,6 +72,14 @@ let location_contains loc ~line ~col =
   && (loc.T.start_line < line || loc.T.start_col <= col)
   && (loc.T.end_line > line || loc.T.end_col >= col)
 
+(* Check if loc1 is contained within loc2 (loc1 is more specific) *)
+let is_loc1_contained_in_loc2 loc1 loc2 =
+  loc1.T.start_line > loc2.T.start_line
+  || loc1.T.start_line = loc2.T.start_line
+     && loc1.T.start_col >= loc2.T.start_col
+  || loc1.T.end_line < loc2.T.end_line
+  || (loc1.T.end_line = loc2.T.end_line && loc1.T.end_col <= loc2.T.end_col)
+
 let to_full_lines loc =
   T.location loc.T.file ~line:loc.T.start_line ~end_line:loc.T.end_line
     ~start_col:0 ~end_col:max_int
@@ -93,33 +101,39 @@ let find_field_in_type file type_decl ~line ~col ~field_name =
   | Ptype_record label_decls ->
       let record_loc = location_of_ppxlib_location file type_decl.ptype_loc in
       let total_fields = List.length label_decls in
-      let decls_array = Array.of_list label_decls in
 
-      Array.find_mapi
-        (fun i ld ->
-          let name_loc = location_of_ppxlib_location file ld.pld_name.loc in
-          if
-            ld.pld_name.txt = field_name
-            && location_contains name_loc ~line ~col
-          then
-            let full_loc = location_of_ppxlib_location file ld.pld_loc in
-            let next_loc =
-              if i = total_fields - 1 then record_loc
-              else location_of_ppxlib_location file decls_array.(i + 1).pld_loc
-            in
-            let extended =
-              extend_field_bounds full_loc next_loc (i = total_fields - 1)
-            in
-            Some
-              {
-                field_name = ld.pld_name.txt;
-                full_field_bounds = extended;
-                enclosing_record = record_loc;
-                total_fields;
-                context = `Type_definition;
-              }
-          else None)
-        decls_array
+      (* Use List.find_mapi to avoid array allocation *)
+      let rec find_with_index i = function
+        | [] -> None
+        | ld :: rest ->
+            let name_loc = location_of_ppxlib_location file ld.pld_name.loc in
+            if
+              ld.pld_name.txt = field_name
+              && location_contains name_loc ~line ~col
+            then
+              let full_loc = location_of_ppxlib_location file ld.pld_loc in
+              let next_loc =
+                if i = total_fields - 1 then record_loc
+                else
+                  match rest with
+                  | next_ld :: _ ->
+                      location_of_ppxlib_location file next_ld.pld_loc
+                  | [] -> record_loc
+              in
+              let extended =
+                extend_field_bounds full_loc next_loc (i = total_fields - 1)
+              in
+              Some
+                {
+                  field_name = ld.pld_name.txt;
+                  full_field_bounds = extended;
+                  enclosing_record = record_loc;
+                  total_fields;
+                  context = `Type_definition;
+                }
+            else find_with_index (i + 1) rest
+      in
+      find_with_index 0 label_decls
   | _ -> None
 
 let find_field_in_record file expr ~line ~col ~field_name =
@@ -127,34 +141,38 @@ let find_field_in_record file expr ~line ~col ~field_name =
   | Pexp_record (fields, _) ->
       let record_loc = location_of_ppxlib_location file expr.pexp_loc in
       let total_fields = List.length fields in
-      let fields_array = Array.of_list fields in
 
-      Array.find_mapi
-        (fun i ((lid : Longident.t Asttypes.loc), expr) ->
-          let field_loc = location_of_ppxlib_location file lid.loc in
-          let name = get_longident_last lid.txt in
-          if name = field_name && location_contains field_loc ~line ~col then
-            let value_loc = location_of_ppxlib_location file expr.pexp_loc in
-            let full_loc = T.merge field_loc value_loc in
-            let next_loc =
-              if i = total_fields - 1 then record_loc
-              else
-                let next_lid, _ = fields_array.(i + 1) in
-                location_of_ppxlib_location file next_lid.loc
-            in
-            let extended =
-              extend_field_bounds full_loc next_loc (i = total_fields - 1)
-            in
-            Some
-              {
-                field_name = name;
-                full_field_bounds = extended;
-                enclosing_record = record_loc;
-                total_fields;
-                context = `Record_construction;
-              }
-          else None)
-        fields_array
+      (* Use recursive function to avoid array allocation *)
+      let rec find_with_index i = function
+        | [] -> None
+        | ((lid : Longident.t Asttypes.loc), expr) :: rest ->
+            let field_loc = location_of_ppxlib_location file lid.loc in
+            let name = get_longident_last lid.txt in
+            if name = field_name && location_contains field_loc ~line ~col then
+              let value_loc = location_of_ppxlib_location file expr.pexp_loc in
+              let full_loc = T.merge field_loc value_loc in
+              let next_loc =
+                if i = total_fields - 1 then record_loc
+                else
+                  match rest with
+                  | (next_lid, _) :: _ ->
+                      location_of_ppxlib_location file next_lid.loc
+                  | [] -> record_loc
+              in
+              let extended =
+                extend_field_bounds full_loc next_loc (i = total_fields - 1)
+              in
+              Some
+                {
+                  field_name = name;
+                  full_field_bounds = extended;
+                  enclosing_record = record_loc;
+                  total_fields;
+                  context = `Record_construction;
+                }
+            else find_with_index (i + 1) rest
+      in
+      find_with_index 0 fields
   | _ -> None
 
 (* Type definition handling *)
@@ -226,24 +244,22 @@ let find_type_definition file ast ~line ~col =
 (* Structure/signature item bounds *)
 
 let get_structure_item_bounds file ast ~line ~col =
-  let items = Array.of_list ast in
-  Array.find_mapi
-    (fun _idx item ->
+  List.find_map
+    (fun item ->
       let loc = location_of_ppxlib_location file item.pstr_loc in
       if location_contains loc ~line ~col then
         (* Return just the item bounds - comments will be added by
            extend_location_with_comments *)
         Some (to_full_lines loc)
       else None)
-    items
+    ast
 
 let rec find_value_in_module file module_type ~line ~col =
   match module_type.pmty_desc with
   | Pmty_signature items ->
       (* Look for value declarations inside this module signature *)
-      let items_array = Array.of_list items in
-      Array.find_mapi
-        (fun _idx item ->
+      List.find_map
+        (fun item ->
           match item.psig_desc with
           | Psig_value vd ->
               let loc = location_of_ppxlib_location file vd.pval_loc in
@@ -255,15 +271,14 @@ let rec find_value_in_module file module_type ~line ~col =
               (* Recursively check inside nested modules *)
               find_value_in_module file md.pmd_type ~line ~col
           | _ -> None)
-        items_array
+        items
   | _ -> None
 
 let get_signature_item_bounds file ast ~line ~col =
   Log.debug (fun m ->
       m "get_signature_item_bounds: looking for item at %s:%d:%d" file line col);
-  let items = Array.of_list ast in
-  Array.find_mapi
-    (fun _idx item ->
+  List.find_map
+    (fun item ->
       let loc = location_of_ppxlib_location file item.psig_loc in
       Log.debug (fun m ->
           m "  Checking item at %d:%d-%d:%d" loc.start_line loc.start_col
@@ -287,7 +302,7 @@ let get_signature_item_bounds file ast ~line ~col =
                bounds *)
             Some (to_full_lines loc))
       else None)
-    items
+    ast
 
 (* Public API *)
 
@@ -384,14 +399,8 @@ let get_enclosing_record ~cache ~file ~line ~col =
                    | Some prev_loc ->
                        (* If this location is contained within the previous one,
                           it's more specific *)
-                       if
-                         loc.T.start_line > prev_loc.T.start_line
-                         || loc.T.start_line = prev_loc.T.start_line
-                            && loc.T.start_col >= prev_loc.T.start_col
-                         || loc.T.end_line < prev_loc.T.end_line
-                         || loc.T.end_line = prev_loc.T.end_line
-                            && loc.T.end_col <= prev_loc.T.end_col
-                       then innermost := Some loc);
+                       if is_loc1_contained_in_loc2 loc prev_loc then
+                         innermost := Some loc);
                 super#expression e
             | _ -> super#expression e
         end
