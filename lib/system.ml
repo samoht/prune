@@ -88,15 +88,13 @@ let check_ocaml_version () =
   | Some version_str -> (
       match parse_version version_str with
       | None ->
-          Error
-            (`Msg
-               (Printf.sprintf "Could not parse OCaml version: %s" version_str))
+          Error (`Msg (Fmt.str "Could not parse OCaml version: %s" version_str))
       | Some (major, minor, _patch) ->
           if major > 5 || (major = 5 && minor >= 3) then Ok ()
           else
             Error
               (`Msg
-                 (Printf.sprintf
+                 (Fmt.str
                     "OCaml compiler version %s is below the minimum required \
                      version 5.3.0. Please upgrade your OCaml compiler to use \
                      prune."

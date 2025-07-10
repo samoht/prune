@@ -1,7 +1,7 @@
 (* Core types and utilities for prune *)
 
 (* Error helper functions *)
-let err fmt = Format.kasprintf (fun e -> Error (`Msg e)) fmt
+let err fmt = Fmt.kstr (fun e -> Error (`Msg e)) fmt
 
 let err_invalid_outline () =
   err "Invalid outline response: missing or invalid 'value' field"
@@ -72,10 +72,9 @@ let location ~line ?(end_line = line) ~start_col ~end_col file =
 
 let pp_location ppf loc =
   if loc.start_line = loc.end_line then
-    Format.fprintf ppf "%s:%d:%d-%d" loc.file loc.start_line loc.start_col
-      loc.end_col
+    Fmt.pf ppf "%s:%d:%d-%d" loc.file loc.start_line loc.start_col loc.end_col
   else
-    Format.fprintf ppf "%s:%d:%d-%d:%d" loc.file loc.start_line loc.start_col
+    Fmt.pf ppf "%s:%d:%d-%d:%d" loc.file loc.start_line loc.start_col
       loc.end_line loc.end_col
 
 (* {2 Symbol information} *)
@@ -265,8 +264,8 @@ type context = {
 type error = [ `Msg of string | `Build_error of context ]
 
 let pp_error ppf = function
-  | `Msg s -> Format.fprintf ppf "%s" s
-  | `Build_error _ctx -> Format.fprintf ppf "Build failed"
+  | `Msg s -> Fmt.pf ppf "%s" s
+  | `Build_error _ctx -> Fmt.pf ppf "Build failed"
 
 let empty_context = { last_build_result = None; previous_errors = [] }
 

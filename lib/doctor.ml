@@ -33,8 +33,7 @@ let parse_merlin_response output =
 (* Run command with timeout *)
 let run_with_timeout ?(timeout_secs = 5) cmd_str =
   let timeout_cmd =
-    if Sys.os_type = "Unix" then
-      Printf.sprintf "timeout %d %s" timeout_secs cmd_str
+    if Sys.os_type = "Unix" then Fmt.str "timeout %d %s" timeout_secs cmd_str
     else cmd_str (* Windows doesn't have timeout command *)
   in
   OS.Cmd.run_out ~err:OS.Cmd.err_null Cmd.(v "sh" % "-c" % timeout_cmd)
@@ -46,7 +45,7 @@ let check_merlin_available () =
   | Ok version ->
       let location =
         match run_with_timeout ~timeout_secs:2 "which ocamlmerlin" with
-        | Ok path -> Printf.sprintf "Location: %s" (String.trim path)
+        | Ok path -> Fmt.str "Location: %s" (String.trim path)
         | Error _ -> "Location: Unable to determine"
       in
       {
@@ -71,7 +70,7 @@ let check_merlin_cache_stats root_dir sample_mli =
   in
   (* First, try a simple query to populate cache *)
   let cmd =
-    Printf.sprintf
+    Fmt.str
       "echo '' | ocamlmerlin single complete-prefix -position 1:0 -prefix '' \
        -filename '%s'"
       file
@@ -98,8 +97,8 @@ let check_merlin_config root_dir =
   (* Create a dummy file path to query merlin *)
   let test_file = Fpath.(v root_dir / "test.ml") |> Fpath.to_string in
   let cmd =
-    Printf.sprintf
-      "echo '' | ocamlmerlin single dump -what paths -filename '%s'" test_file
+    Fmt.str "echo '' | ocamlmerlin single dump -what paths -filename '%s'"
+      test_file
   in
   match run_with_timeout cmd with
   | Error _ ->
@@ -117,8 +116,8 @@ let check_merlin_config root_dir =
             match check_merlin_cache_stats root_dir None with
             | Some (Some misses) when misses > 5 ->
                 [
-                  Printf.sprintf
-                    "Warning: High merlin cache misses (%d) detected" misses;
+                  Fmt.str "Warning: High merlin cache misses (%d) detected"
+                    misses;
                   "This may indicate missing build artifacts or configuration \
                    issues";
                 ]
@@ -160,8 +159,7 @@ let check_build_artifacts root_dir =
       (* Check for .cmt files *)
       (* Use a more efficient check - just see if any .cmt files exist *)
       let cmd =
-        Printf.sprintf "find %s -name '*.cmt' -o -name '*.cmti' | head -1"
-          "_build"
+        Fmt.str "find %s -name '*.cmt' -o -name '*.cmti' | head -1" "_build"
       in
       match run_with_timeout ~timeout_secs:2 cmd with
       | Ok output when String.trim output <> "" ->
@@ -206,7 +204,7 @@ let get_cache_miss_details root_dir sample_mli =
   match check_merlin_cache_stats root_dir (Some sample_mli) with
   | Some (Some misses) when misses > 2 ->
       [
-        Printf.sprintf
+        Fmt.str
           "High cache misses detected (%d) - merlin may not see all compiled \
            files"
           misses;
@@ -228,7 +226,7 @@ let process_merlin_occurrences_response root_dir sample_mli output =
 (* Test merlin occurrences command *)
 let test_merlin_occurrences_command root_dir sample_mli =
   let cmd =
-    Printf.sprintf
+    Fmt.str
       "ocamlmerlin single occurrences -identifier-at 1:4 -scope project \
        -filename '%s' < '%s'"
       sample_mli sample_mli
@@ -242,13 +240,13 @@ let test_merlin_occurrences root_dir sample_mli =
   match OS.Dir.exists (Fpath.v sample_mli) with
   | Ok true ->
       make_merlin_test_result false
-        (Printf.sprintf "%s is a directory, not a file" sample_mli)
+        (Fmt.str "%s is a directory, not a file" sample_mli)
         ~details:[ "Provide a .mli file to test merlin occurrences" ]
   | _ -> (
       match OS.File.exists (Fpath.v sample_mli) with
       | Ok false | Error _ ->
           make_merlin_test_result false
-            (Printf.sprintf "Sample file %s not found" sample_mli)
+            (Fmt.str "Sample file %s not found" sample_mli)
       | Ok true -> test_merlin_occurrences_command root_dir sample_mli)
 
 (* Check if dune @ocaml-index target exists *)
@@ -279,8 +277,7 @@ let check_ocaml_version () =
           {
             check_name = "OCaml compiler version";
             passed = true;
-            message =
-              Printf.sprintf "OCaml %s meets minimum requirements" version;
+            message = Fmt.str "OCaml %s meets minimum requirements" version;
             details = [ "Minimum required version: 5.3.0" ];
           }
       | None ->

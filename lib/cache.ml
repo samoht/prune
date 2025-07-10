@@ -197,7 +197,7 @@ let write cache file =
       (* Fail hard if no diffs - this shouldn't happen *)
       if entry.diffs = [] then
         failwith
-          (Printf.sprintf
+          (Fmt.str
              "BUG: Attempted to write file %s with no changes. This indicates \
               a logic error in the removal process."
              file);

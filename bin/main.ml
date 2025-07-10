@@ -316,8 +316,8 @@ let format =
             (`Msg (Fmt.str "unknown format '%s', expected 'cli' or 'html'" s))
     in
     let print fmt = function
-      | Show.Cli -> Format.fprintf fmt "cli"
-      | Show.Html -> Format.fprintf fmt "html"
+      | Show.Cli -> Fmt.pf fmt "cli"
+      | Show.Html -> Fmt.pf fmt "html"
     in
     Arg.conv (parse, print)
   in

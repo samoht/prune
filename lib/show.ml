@@ -113,47 +113,45 @@ let escape_html s =
 
 (* Write HTML header and CSS *)
 let write_html_header fmt =
-  Format.fprintf fmt "<!DOCTYPE html>@.";
-  Format.fprintf fmt "<html>@.";
-  Format.fprintf fmt "<head>@.";
-  Format.fprintf fmt "  <meta charset=\"UTF-8\">@.";
-  Format.fprintf fmt "  <title>Prune Symbol Report</title>@.";
-  Format.fprintf fmt "  <style>@.";
-  Format.fprintf fmt
+  Fmt.pf fmt "<!DOCTYPE html>@.";
+  Fmt.pf fmt "<html>@.";
+  Fmt.pf fmt "<head>@.";
+  Fmt.pf fmt "  <meta charset=\"UTF-8\">@.";
+  Fmt.pf fmt "  <title>Prune Symbol Report</title>@.";
+  Fmt.pf fmt "  <style>@.";
+  Fmt.pf fmt
     "    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', \
      Roboto, sans-serif; margin: 20px; }@.";
-  Format.fprintf fmt "    h1, h2, h3 { color: #333; }@.";
-  Format.fprintf fmt
+  Fmt.pf fmt "    h1, h2, h3 { color: #333; }@.";
+  Fmt.pf fmt
     "    .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; \
      margin-bottom: 20px; }@.";
-  Format.fprintf fmt
+  Fmt.pf fmt
     "    .file-section { margin-bottom: 30px; border: 1px solid #ddd; padding: \
      15px; border-radius: 5px; }@.";
-  Format.fprintf fmt
+  Fmt.pf fmt
     "    .symbol { margin: 10px 0; padding: 10px; background: #fafafa; \
      border-radius: 3px; }@.";
-  Format.fprintf fmt "    .unused { background: #ffe6e6; }@.";
-  Format.fprintf fmt "    .used { background: #e6ffe6; }@.";
-  Format.fprintf fmt "    .excluded-only { background: #fff3cd; }@.";
-  Format.fprintf fmt
+  Fmt.pf fmt "    .unused { background: #ffe6e6; }@.";
+  Fmt.pf fmt "    .used { background: #e6ffe6; }@.";
+  Fmt.pf fmt "    .excluded-only { background: #fff3cd; }@.";
+  Fmt.pf fmt
     "    .location { font-family: monospace; font-size: 0.9em; color: #666; \
      margin-left: 20px; }@.";
-  Format.fprintf fmt "    .kind { font-weight: bold; color: #0066cc; }@.";
-  Format.fprintf fmt
-    "    .name { font-family: monospace; font-weight: bold; }@.";
-  Format.fprintf fmt "    .count { color: #666; font-size: 0.9em; }@.";
-  Format.fprintf fmt "    a { color: #0066cc; text-decoration: none; }@.";
-  Format.fprintf fmt "    a:hover { text-decoration: underline; }@.";
-  Format.fprintf fmt "    .tab-buttons { margin-bottom: 20px; }@.";
-  Format.fprintf fmt
+  Fmt.pf fmt "    .kind { font-weight: bold; color: #0066cc; }@.";
+  Fmt.pf fmt "    .name { font-family: monospace; font-weight: bold; }@.";
+  Fmt.pf fmt "    .count { color: #666; font-size: 0.9em; }@.";
+  Fmt.pf fmt "    a { color: #0066cc; text-decoration: none; }@.";
+  Fmt.pf fmt "    a:hover { text-decoration: underline; }@.";
+  Fmt.pf fmt "    .tab-buttons { margin-bottom: 20px; }@.";
+  Fmt.pf fmt
     "    .tab-button { padding: 10px 20px; margin-right: 5px; border: 1px \
      solid #ddd; background: #f5f5f5; cursor: pointer; }@.";
-  Format.fprintf fmt
-    "    .tab-button.active { background: #0066cc; color: white; }@.";
-  Format.fprintf fmt "    .tab-content { display: none; }@.";
-  Format.fprintf fmt "    .tab-content.active { display: block; }@.";
-  Format.fprintf fmt "  </style>@.";
-  Format.fprintf fmt "</head>@."
+  Fmt.pf fmt "    .tab-button.active { background: #0066cc; color: white; }@.";
+  Fmt.pf fmt "    .tab-content { display: none; }@.";
+  Fmt.pf fmt "    .tab-content.active { display: block; }@.";
+  Fmt.pf fmt "  </style>@.";
+  Fmt.pf fmt "</head>@."
 
 (* Write summary section *)
 let write_summary fmt occurrences =
@@ -166,26 +164,25 @@ let write_summary fmt occurrences =
     List.filter (fun o -> o.usage_class = Used_only_in_excluded) occurrences
   in
 
-  Format.fprintf fmt "<div class=\"summary\">@.";
-  Format.fprintf fmt "  <h2>Summary</h2>@.";
-  Format.fprintf fmt "  <p>Total symbols: %d</p>@." total_symbols;
-  Format.fprintf fmt "  <p>Used symbols: %d</p>@." (List.length used_symbols);
-  Format.fprintf fmt "  <p>Unused symbols: %d</p>@."
-    (List.length unused_symbols);
-  Format.fprintf fmt "  <p>Used only in excluded directories: %d</p>@."
+  Fmt.pf fmt "<div class=\"summary\">@.";
+  Fmt.pf fmt "  <h2>Summary</h2>@.";
+  Fmt.pf fmt "  <p>Total symbols: %d</p>@." total_symbols;
+  Fmt.pf fmt "  <p>Used symbols: %d</p>@." (List.length used_symbols);
+  Fmt.pf fmt "  <p>Unused symbols: %d</p>@." (List.length unused_symbols);
+  Fmt.pf fmt "  <p>Used only in excluded directories: %d</p>@."
     (List.length excluded_only);
-  Format.fprintf fmt "</div>@."
+  Fmt.pf fmt "</div>@."
 
 (* Write tab buttons *)
 let write_tab_buttons fmt =
-  Format.fprintf fmt "<div class=\"tab-buttons\">@.";
-  Format.fprintf fmt
+  Fmt.pf fmt "<div class=\"tab-buttons\">@.";
+  Fmt.pf fmt
     "  <button class=\"tab-button active\" onclick=\"showTab('by-file')\">By \
      File</button>@.";
-  Format.fprintf fmt
+  Fmt.pf fmt
     "  <button class=\"tab-button\" onclick=\"showTab('by-symbol')\">By \
      Symbol</button>@.";
-  Format.fprintf fmt "</div>@."
+  Fmt.pf fmt "</div>@."
 
 (* Get CSS class name for usage classification *)
 let class_of_usage = function
@@ -205,41 +202,41 @@ let filter_usage_locations occ =
 (* Write symbol occurrence *)
 let write_symbol fmt occ =
   let class_name = class_of_usage occ.usage_class in
-  Format.fprintf fmt "    <div class=\"symbol %s\">@." class_name;
-  Format.fprintf fmt "      <span class=\"kind\">%s</span> "
+  Fmt.pf fmt "    <div class=\"symbol %s\">@." class_name;
+  Fmt.pf fmt "      <span class=\"kind\">%s</span> "
     (escape_html (string_of_symbol_kind occ.symbol.kind));
-  Format.fprintf fmt "      <span class=\"name\">%s</span> "
+  Fmt.pf fmt "      <span class=\"name\">%s</span> "
     (escape_html occ.symbol.name);
-  Format.fprintf fmt "      <span class=\"count\">(%d occurrences)</span>@."
+  Fmt.pf fmt "      <span class=\"count\">(%d occurrences)</span>@."
     occ.occurrences;
   if occ.occurrences > 0 then (
     let usage_locations = filter_usage_locations occ in
     if usage_locations <> [] then (
-      Format.fprintf fmt "      <div>Used in:</div>@.";
+      Fmt.pf fmt "      <div>Used in:</div>@.";
       List.iter
         (fun loc ->
-          Format.fprintf fmt "      <div class=\"location\">%s:%d:%d</div>@."
+          Fmt.pf fmt "      <div class=\"location\">%s:%d:%d</div>@."
             (escape_html loc.file) loc.start_line loc.start_col)
         usage_locations);
-    Format.fprintf fmt "    </div>@.")
+    Fmt.pf fmt "    </div>@.")
 
 (* Write By File view *)
 let write_by_file_view fmt by_file =
-  Format.fprintf fmt "<div id=\"by-file\" class=\"tab-content active\">@.";
-  Format.fprintf fmt "  <h2>Symbols by File</h2>@.";
+  Fmt.pf fmt "<div id=\"by-file\" class=\"tab-content active\">@.";
+  Fmt.pf fmt "  <h2>Symbols by File</h2>@.";
   List.iter
     (fun (file, occs) ->
-      Format.fprintf fmt "  <div class=\"file-section\">@.";
-      Format.fprintf fmt "    <h3>%s</h3>@." (escape_html file);
+      Fmt.pf fmt "  <div class=\"file-section\">@.";
+      Fmt.pf fmt "    <h3>%s</h3>@." (escape_html file);
       List.iter (write_symbol fmt) occs;
-      Format.fprintf fmt "  </div>@.")
+      Fmt.pf fmt "  </div>@.")
     (List.sort (fun (f1, _) (f2, _) -> String.compare f1 f2) by_file);
-  Format.fprintf fmt "</div>@."
+  Fmt.pf fmt "</div>@."
 
 (* Write By Symbol view *)
 let write_by_symbol_view fmt by_symbol =
-  Format.fprintf fmt "<div id=\"by-symbol\" class=\"tab-content\">@.";
-  Format.fprintf fmt "  <h2>All Symbols</h2>@.";
+  Fmt.pf fmt "<div id=\"by-symbol\" class=\"tab-content\">@.";
+  Fmt.pf fmt "  <h2>All Symbols</h2>@.";
   List.iter
     (fun ((name, kind), occs) ->
       let first_occ = List.hd occs in
@@ -248,20 +245,18 @@ let write_by_symbol_view fmt by_symbol =
       in
       let class_name = class_of_usage first_occ.usage_class in
 
-      Format.fprintf fmt "  <div class=\"symbol %s\">@." class_name;
-      Format.fprintf fmt "    <span class=\"kind\">%s</span> "
+      Fmt.pf fmt "  <div class=\"symbol %s\">@." class_name;
+      Fmt.pf fmt "    <span class=\"kind\">%s</span> "
         (escape_html (string_of_symbol_kind kind));
-      Format.fprintf fmt "    <span class=\"name\">%s</span> "
-        (escape_html name);
-      Format.fprintf fmt
-        "    <span class=\"count\">(%d total occurrences)</span>@."
+      Fmt.pf fmt "    <span class=\"name\">%s</span> " (escape_html name);
+      Fmt.pf fmt "    <span class=\"count\">(%d total occurrences)</span>@."
         total_occurrences;
 
       (* Show where it's defined *)
-      Format.fprintf fmt "    <div>Defined in:</div>@.";
+      Fmt.pf fmt "    <div>Defined in:</div>@.";
       List.iter
         (fun occ ->
-          Format.fprintf fmt "    <div class=\"location\">%s:%d:%d</div>@."
+          Fmt.pf fmt "    <div class=\"location\">%s:%d:%d</div>@."
             (escape_html occ.symbol.location.file)
             occ.symbol.location.start_line occ.symbol.location.start_col)
         occs;
@@ -271,38 +266,35 @@ let write_by_symbol_view fmt by_symbol =
         List.concat_map (fun occ -> filter_usage_locations occ) occs
       in
       if usage_locations <> [] then (
-        Format.fprintf fmt "    <div>Used in:</div>@.";
+        Fmt.pf fmt "    <div>Used in:</div>@.";
         List.iter
           (fun loc ->
-            Format.fprintf fmt "    <div class=\"location\">%s:%d:%d</div>@."
+            Fmt.pf fmt "    <div class=\"location\">%s:%d:%d</div>@."
               (escape_html loc.file) loc.start_line loc.start_col)
           usage_locations);
-      Format.fprintf fmt "  </div>@.")
+      Fmt.pf fmt "  </div>@.")
     (List.sort
        (fun ((n1, k1), _) ((n2, k2), _) ->
          match String.compare n1 n2 with 0 -> compare k1 k2 | n -> n)
        by_symbol);
-  Format.fprintf fmt "</div>@."
+  Fmt.pf fmt "</div>@."
 
 (* Write JavaScript for tab switching *)
 let write_javascript fmt =
-  Format.fprintf fmt "<script>@.";
-  Format.fprintf fmt "function showTab(tabName) {@.";
-  Format.fprintf fmt
-    "  var tabs = document.getElementsByClassName('tab-content');@.";
-  Format.fprintf fmt "  for (var i = 0; i < tabs.length; i++) {@.";
-  Format.fprintf fmt "    tabs[i].classList.remove('active');@.";
-  Format.fprintf fmt "  }@.";
-  Format.fprintf fmt
-    "  var buttons = document.getElementsByClassName('tab-button');@.";
-  Format.fprintf fmt "  for (var i = 0; i < buttons.length; i++) {@.";
-  Format.fprintf fmt "    buttons[i].classList.remove('active');@.";
-  Format.fprintf fmt "  }@.";
-  Format.fprintf fmt
-    "  document.getElementById(tabName).classList.add('active');@.";
-  Format.fprintf fmt "  event.target.classList.add('active');@.";
-  Format.fprintf fmt "}@.";
-  Format.fprintf fmt "</script>@."
+  Fmt.pf fmt "<script>@.";
+  Fmt.pf fmt "function showTab(tabName) {@.";
+  Fmt.pf fmt "  var tabs = document.getElementsByClassName('tab-content');@.";
+  Fmt.pf fmt "  for (var i = 0; i < tabs.length; i++) {@.";
+  Fmt.pf fmt "    tabs[i].classList.remove('active');@.";
+  Fmt.pf fmt "  }@.";
+  Fmt.pf fmt "  var buttons = document.getElementsByClassName('tab-button');@.";
+  Fmt.pf fmt "  for (var i = 0; i < buttons.length; i++) {@.";
+  Fmt.pf fmt "    buttons[i].classList.remove('active');@.";
+  Fmt.pf fmt "  }@.";
+  Fmt.pf fmt "  document.getElementById(tabName).classList.add('active');@.";
+  Fmt.pf fmt "  event.target.classList.add('active');@.";
+  Fmt.pf fmt "}@.";
+  Fmt.pf fmt "</script>@."
 
 let render_html output_dir occurrences =
   let html_file = Filename.concat output_dir "index.html" in
@@ -314,9 +306,9 @@ let render_html output_dir occurrences =
 
   (* HTML header *)
   write_html_header fmt;
-  Format.fprintf fmt "<body>@.";
+  Fmt.pf fmt "<body>@.";
 
-  Format.fprintf fmt "<h1>Prune Symbol Occurrence Report</h1>@.";
+  Fmt.pf fmt "<h1>Prune Symbol Occurrence Report</h1>@.";
 
   (* Summary *)
   write_summary fmt occurrences;
@@ -333,8 +325,8 @@ let render_html output_dir occurrences =
   (* JavaScript *)
   write_javascript fmt;
 
-  Format.fprintf fmt "</body>@.";
-  Format.fprintf fmt "</html>@.";
+  Fmt.pf fmt "</body>@.";
+  Fmt.pf fmt "</html>@.";
   Format.pp_print_flush fmt ();
   close_out oc;
 

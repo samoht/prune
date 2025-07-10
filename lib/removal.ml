@@ -396,7 +396,7 @@ let process_removal_operations root_dir file cache symbols =
             op.location.end_line
             (match op.context.enclosing with
             | None -> "none"
-            | Some enc -> Printf.sprintf "%d-%d" enc.start_line enc.end_line));
+            | Some enc -> Fmt.str "%d-%d" enc.start_line enc.end_line));
       let result = process_removal_operation root_dir file cache op in
       apply_removal_result file cache result op.context)
     operations

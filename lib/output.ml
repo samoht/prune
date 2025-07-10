@@ -35,28 +35,23 @@ let get_terminal_width () =
 (* Structured output *)
 let header fmt =
   if !current_mode <> Quiet then
-    Format.kasprintf (fun s -> Format.printf "%s@." (with_color blue s)) fmt
-  else Format.ifprintf Format.std_formatter fmt
+    Fmt.kstr (fun s -> Fmt.pr "%s@." (with_color blue s)) fmt
+  else Fmt.kstr ignore fmt
 
 let section fmt =
-  if !current_mode <> Quiet then
-    Format.kasprintf (fun s -> Format.printf "  %s@." s) fmt
-  else Format.ifprintf Format.std_formatter fmt
+  if !current_mode <> Quiet then Fmt.kstr (fun s -> Fmt.pr "  %s@." s) fmt
+  else Fmt.kstr ignore fmt
 
 let success fmt =
   if !current_mode <> Quiet then
-    Format.kasprintf (fun s -> Format.printf "%s@." (with_color green s)) fmt
-  else Format.ifprintf Format.std_formatter fmt
+    Fmt.kstr (fun s -> Fmt.pr "%s@." (with_color green s)) fmt
+  else Fmt.kstr ignore fmt
 
 let warning fmt =
-  Format.kasprintf
-    (fun s -> Format.eprintf "%s@." (with_color yellow ("Warning: " ^ s)))
-    fmt
+  Fmt.kstr (fun s -> Fmt.epr "%s@." (with_color yellow ("Warning: " ^ s))) fmt
 
 let error fmt =
-  Format.kasprintf
-    (fun s -> Format.eprintf "%s@." (with_color red ("Error: " ^ s)))
-    fmt
+  Fmt.kstr (fun s -> Fmt.epr "%s@." (with_color red ("Error: " ^ s))) fmt
 
 (* Progress indicators *)
 type progress = {
@@ -74,7 +69,7 @@ let update_progress p msg =
     match p.total with
     | Some total ->
         let pct = p.current * 100 / total in
-        let prefix = Format.sprintf "[%3d%%] " pct in
+        let prefix = Fmt.str "[%3d%%] " pct in
         let prefix_len = String.length prefix in
         let max_msg_len = max 1 (width - prefix_len - 1) in
         let truncated_msg =
@@ -89,7 +84,7 @@ let update_progress p msg =
             full_msg ^ String.make (width - String.length full_msg) ' '
           else full_msg
         in
-        Format.printf "\r%s%!" padded_msg
+        Fmt.pr "\r%s%!" padded_msg
     | None ->
         let max_msg_len = max 1 (width - 1) in
         let truncated_msg =
@@ -104,7 +99,7 @@ let update_progress p msg =
             ^ String.make (width - String.length truncated_msg) ' '
           else truncated_msg
         in
-        Format.printf "\r%s%!" padded_msg
+        Fmt.pr "\r%s%!" padded_msg
 
 let set_progress_current p n =
   p.current <- n;
@@ -113,4 +108,4 @@ let set_progress_current p n =
 let clear_progress _ =
   if !current_mode = Normal && is_tty then
     let width = get_terminal_width () in
-    Format.printf "\r%s\r%!" (String.make width ' ')
+    Fmt.pr "\r%s\r%!" (String.make width ' ')
