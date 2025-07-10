@@ -123,6 +123,12 @@ let is_file_empty cache file =
       (* A file is empty if all lines are blank *)
       Array.for_all (fun line -> String.trim line = "") entry.lines
 
+(* Get the full content of a file from cache *)
+let get_file_content cache file =
+  match Hashtbl.find_opt cache.files file with
+  | None -> None
+  | Some entry -> Some (String.concat "\n" (Array.to_list entry.lines))
+
 (* Parse AST from entry content *)
 let parse_ast_for_entry file entry =
   let content = String.concat "\n" (Array.to_list entry.lines) in

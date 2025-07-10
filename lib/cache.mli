@@ -63,8 +63,9 @@ val get_ast : t -> string -> (ast_entry, [ `Msg of string ]) result
 
 (** {2 File content access} *)
 
+val get_file_content : t -> string -> string option
 (** [get_file_content cache file] returns the current content of [file] from
-    cache. Returns an error if the file is not loaded. *)
+    cache as a single string. Returns [None] if the file is not loaded. *)
 
 val write : t -> string -> (unit, [ `Msg of string ]) result
 (** [write cache file] writes the cached content of [file] to disk. Returns an

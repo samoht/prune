@@ -6,19 +6,6 @@ module Log = (val Logs.src_log (Logs.Src.create "prune.analysis") : Logs.LOG)
 
 (* {2 Symbol extraction} *)
 
-(* Helper to get file content from cache *)
-let get_cached_file_content ~cache file =
-  match Cache.get_line_count cache file with
-  | None -> None
-  | Some line_count ->
-      let lines = ref [] in
-      for i = line_count downto 1 do
-        match Cache.get_line cache file i with
-        | Some line -> lines := line :: !lines
-        | None -> ()
-      done;
-      Some (String.concat "\n" !lines)
-
 (* Helper to create a symbol with its children *)
 let rec create_symbol_with_children ~cache item =
   let main_symbol =
@@ -39,7 +26,7 @@ and outline_item_to_symbol ~cache (item : outline_item) =
       match Cache.load cache item.location.file with
       | Error _ -> create_symbol_with_children ~cache item
       | Ok () -> (
-          match get_cached_file_content ~cache item.location.file with
+          match Cache.get_file_content cache item.location.file with
           | None -> create_symbol_with_children ~cache item
           | Some content ->
               if
