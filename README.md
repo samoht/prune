@@ -202,14 +202,29 @@ possible.
 
 ## AI Transparency
 
-**This project was developed almost entirely using AI** ([Claude Code](https://www.anthropic.com/claude-code) by Anthropic). While the tool has been tested extensively and works well in practice, users should be aware that:
+**This project was developed almost entirely using AI** ([Claude
+  Code](https://www.anthropic.com/claude-code) by Anthropic). While
+  the tool has been tested extensively and works well in practice,
+  users should be aware that:
 
-1. **Technical implications**: AI-generated code may have unique patterns or subtle bugs. We've used `prune` on itself and other projects successfully, but thorough testing is always recommended.
+1. **Technical implications**: AI-generated code may have unique
+patterns or subtle bugs. We've used `prune` on itself and other
+projects successfully, but thorough testing is always recommended.
 
-2. **Legal uncertainty**: The copyright status, license implications, and liability for AI-generated code remain legally untested. We cannot trace which training data influenced specific code patterns.
+2. **Legal uncertainty**: The copyright status, license implications,
+and liability for AI-generated code remain legally untested. We cannot
+trace which training data influenced specific code patterns.
 
-3. **Our Commitment**: Despite these unknowns, we believe `prune` provides real value to the OCaml community. We are committed to maintaining it, using it ourselves, and being transparent about its AI origins.
+3. **Practical use**: Despite these unknowns, `prune` has been tested
+on real OCaml Projects and provide useful results. The tool is
+actively maintained and used in practice.
 
-For deeper context on these issues, see the [Software Freedom Conservancy](https://sfconservancy.org/blog/2022/feb/03/github-copilot-copyleft-gpl/) and [FSF positions](https://www.fsf.org/blogs/licensing/fsf-funded-call-for-white-papers-on-questions-around-copilot/) on AI-generated code.
+For deeper context on these issues, see the [Software Freedom
+Conservancy](https://sfconservancy.org/blog/2022/feb/03/github-copilot-copyleft-gpl/)
+and [FSF
+positions](https://www.fsf.org/blogs/licensing/fsf-funded-call-for-white-papers-on-questions-around-copilot/)
+on AI-generated code.
 
-**By using this tool, you acknowledge these uncertainties.** As with any code modification tool: use version control, review all changes, and test thoroughly.
+**By using this tool, you acknowledge these uncertainties.** As with
+  any code modification tool: use version control, review all changes,
+  and test thoroughly.
