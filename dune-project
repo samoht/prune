@@ -20,6 +20,7 @@ merlin for accurate symbol analysis across dune projects.")
  (depends
   (ocaml (>= 5.3))
   dune
+  dune-build-info
   merlin
   (yojson (>= 1.6))
   (bos (>= 0.2))
