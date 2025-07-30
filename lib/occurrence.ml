@@ -160,7 +160,9 @@ let query_merlin ~cache root_dir symbol =
   occurrence_data
 
 (* Get base module name from file path *)
-let get_module_base file = file |> Filename.basename |> Filename.chop_extension
+let get_module_base file =
+  let basename = Filename.basename file in
+  try Filename.chop_extension basename with Invalid_argument _ -> basename
 
 (* Get the full module path (directory + module name) to distinguish between
    modules with the same name in different directories *)
@@ -356,8 +358,12 @@ let check_bulk ~cache exclude_dirs root_dir (symbols : symbol_info list) =
       (fun (symbol : symbol_info) ->
         incr processed;
         let module_name =
-          Filename.basename symbol.location.file
-          |> Filename.chop_extension |> String.capitalize_ascii
+          let basename = Filename.basename symbol.location.file in
+          let name =
+            try Filename.chop_extension basename
+            with Invalid_argument _ -> basename
+          in
+          String.capitalize_ascii name
         in
         Progress.update progress ~current:!processed
           (Fmt.str "Checking symbol: %s.%s" module_name symbol.name);
