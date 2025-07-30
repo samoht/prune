@@ -4,6 +4,24 @@ open Prune
 open Prune.Removal
 module Cache = Prune.Cache
 
+(* Helper to check if content contains a line starting with substring *)
+let contains content sub =
+  match
+    String.split_on_char '\n' content
+    |> List.find_opt (fun line ->
+           String.length line >= String.length sub
+           && String.sub line 0 (String.length sub) = sub)
+  with
+  | Some _ -> true
+  | None -> false
+
+(* Helper to check removal results *)
+let check_removal_results content =
+  check bool "unused value removed" false (contains content "val unused");
+  check bool "unused type removed" false (contains content "type unused_t");
+  check bool "used value remains" true (contains content "val used");
+  check bool "used type remains" true (contains content "type used_t")
+
 (* Helper to create a temporary OCaml project *)
 let with_temp_project test_name content_mli content_ml f =
   let temp_dir = Filename.temp_file test_name "" in
@@ -98,30 +116,11 @@ type unused_t = float|}
           let content = really_input_string ic (in_channel_length ic) in
           close_in ic;
 
-          (* Check that unused items were removed *)
-          let contains s sub =
-            match
-              String.split_on_char '\n' s
-              |> List.find_opt (fun line ->
-                     String.length line >= String.length sub
-                     && String.sub line 0 (String.length sub) = sub)
-            with
-            | Some _ -> true
-            | None -> false
-          in
+          (* Check results *)
+          check_removal_results content)
 
-          check bool "unused value removed" false
-            (contains content "val unused");
-          check bool "unused type removed" false
-            (contains content "type unused_t");
-
-          (* Check that used items remain *)
-          check bool "used value remains" true (contains content "val used");
-          check bool "used type remains" true (contains content "type used_t"))
-
-(* Test module filtering logic *)
-let test_module_filtering () =
-  (* Create occurrence data with some used and unused symbols *)
+(* Helper to create test module data *)
+let create_module_test_data () =
   let symbols =
     [
       {
@@ -144,32 +143,18 @@ let test_module_filtering () =
       };
     ]
   in
-
   let occurrence_data =
     [
-      {
-        symbol = List.nth symbols 0;
-        occurrences = 0;
-        locations = [];
-        usage_class = Unused;
-      };
-      (* M unused *)
-      {
-        symbol = List.nth symbols 1;
-        occurrences = 2;
-        locations = [];
-        usage_class = Used;
-      };
-      (* foo used *)
-      {
-        symbol = List.nth symbols 2;
-        occurrences = 0;
-        locations = [];
-        usage_class = Unused;
-      };
-      (* bar unused *)
+      { symbol = List.nth symbols 0; occurrences = 0; locations = []; usage_class = Unused };
+      { symbol = List.nth symbols 1; occurrences = 2; locations = []; usage_class = Used };
+      { symbol = List.nth symbols 2; occurrences = 0; locations = []; usage_class = Unused };
     ]
   in
+  (symbols, occurrence_data)
+
+(* Test module filtering logic *)
+let test_module_filtering () =
+  let _symbols, occurrence_data = create_module_test_data () in
 
   let unused = List.filter (fun occ -> occ.occurrences = 0) occurrence_data in
 
