@@ -174,13 +174,20 @@ let process_doctor sample_mli log_level =
   | Ok () -> ()
   | Error _ -> exit 1
 
-let process_show format output_dir paths log_level =
+let process_show format output_dir paths use_merlin_server log_level =
   setup_logs log_level;
 
   (* If no paths provided, use current directory *)
   let paths = if paths = [] then [ "." ] else paths in
 
   let root_dir = Sys.getcwd () in
+
+  (* Set merlin mode *)
+  set_merlin_mode (if use_merlin_server then `Server else `Single);
+
+  (* Register cleanup function to stop merlin server if using server mode *)
+  let cleanup () = stop_merlin_server root_dir in
+  at_exit cleanup;
 
   (* Get .mli files using the existing logic *)
   let files, dirs =
@@ -342,12 +349,15 @@ let show_cmd =
       `Pre "  $(mname) show --format html -o report";
       `P "Analyze specific directories:";
       `Pre "  $(mname) show lib/ src/";
+      `P "Use merlin server mode:";
+      `Pre "  $(mname) show --server";
     ]
   in
   let info = Cmd.info "show" ~doc ~man in
   let term =
     Term.(
-      const process_show $ format $ output_dir $ paths $ Logs_cli.level ~env ())
+      const process_show $ format $ output_dir $ paths $ merlin_server
+      $ Logs_cli.level ~env ())
   in
   Cmd.v info term
 
