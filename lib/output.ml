@@ -27,7 +27,8 @@ let get_terminal_width () =
           let w = int_of_string (input_line ic) in
           close_in ic;
           w
-        with _ -> 80 (* Safe default if tput fails *)
+        with 
+        | End_of_file | Failure _ | Sys_error _ -> 80 (* Safe default if tput fails *)
       in
       terminal_width := Some width;
       width

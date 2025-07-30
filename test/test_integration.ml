@@ -37,10 +37,10 @@ let with_temp_project test_name content_mli content_ml f =
     result
   with e ->
     (* Clean up on error *)
-    (try Sys.remove mli_file with _ -> ());
-    (try Sys.remove ml_file with _ -> ());
-    (try Sys.remove dune_file with _ -> ());
-    (try Unix.rmdir temp_dir with _ -> ());
+    (try Sys.remove mli_file with Sys_error _ -> ());
+    (try Sys.remove ml_file with Sys_error _ -> ());
+    (try Sys.remove dune_file with Sys_error _ -> ());
+    (try Unix.rmdir temp_dir with Unix.Unix_error _ -> ());
     raise e
 
 (* Test the full removal flow with real files *)
