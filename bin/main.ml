@@ -22,7 +22,7 @@ let is_excluded path =
     segments
 
 (* Recursively find all .mli files in a directory *)
-let rec find_mli_files acc dir =
+let rec collect_mli_files acc dir =
   match OS.Dir.contents dir with
   | Error _ -> acc
   | Ok paths ->
@@ -32,7 +32,7 @@ let rec find_mli_files acc dir =
           else if Fpath.has_ext ".mli" path then path :: acc
           else
             match OS.Dir.exists path with
-            | Ok true -> find_mli_files acc path
+            | Ok true -> collect_mli_files acc path
             | _ -> acc)
         acc paths
 
@@ -40,7 +40,7 @@ let get_mli_files root_dir files dirs =
   if files = [] && dirs = [] then
     (* No specific paths - find all .mli files in project *)
     let root_path = Fpath.v root_dir in
-    let mli_files = find_mli_files [] root_path in
+    let mli_files = collect_mli_files [] root_path in
     List.map
       (fun p ->
         let s = Fpath.to_string p in
@@ -54,7 +54,7 @@ let get_mli_files root_dir files dirs =
     let dir_mlis =
       List.concat_map
         (fun dir ->
-          let mli_files = find_mli_files [] (Fpath.v dir) in
+          let mli_files = collect_mli_files [] (Fpath.v dir) in
           List.map
             (fun p ->
               let s = Fpath.to_string p in

@@ -11,6 +11,9 @@ let err fmt = Fmt.kstr (fun e -> Error (`Msg e)) fmt
 let err_no_dune_project root_dir =
   err "No dune-project file found in %s" root_dir
 
+let err_version_parse version =
+  err "Could not parse OCaml version: %s" version
+
 (* {2 TTY and environment detection} *)
 
 (* Check if we're running in a TTY (for progress display) *)
@@ -88,8 +91,7 @@ let check_ocaml_version () =
   | None -> Error (`Msg "Could not determine OCaml compiler version")
   | Some version_str -> (
       match parse_version version_str with
-      | None ->
-          Error (`Msg (Fmt.str "Could not parse OCaml version: %s" version_str))
+      | None -> err_version_parse version_str
       | Some (major, minor, _patch) ->
           if major > 5 || (major = 5 && minor >= 3) then Ok ()
           else
