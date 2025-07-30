@@ -71,51 +71,47 @@ let get_mli_files root_dir files dirs =
     in
     mli_files @ dir_mlis
 
-let process_clean dry_run force step_wise use_merlin_server paths exclude_dirs
-    log_level json =
-  setup_logs log_level;
+type clean_config = {
+  dry_run : bool;
+  force : bool;
+  step_wise : bool;
+  use_merlin_server : bool;
+  json : bool;
+}
 
-  (* Set output mode based on flags and log level *)
-  (if json then Prune.Output.set_mode Prune.Output.Json
-   else
-     (* Default log level from Logs_cli is warning, so we need to handle this
-        correctly *)
-     match log_level with
-     | Some Logs.Error -> Prune.Output.set_mode Prune.Output.Quiet
-     | Some Logs.Debug | Some Logs.Info ->
-         Prune.Output.set_mode Prune.Output.Verbose
-     | Some Logs.Warning | Some Logs.App | None ->
-         (* Default to Normal mode for warning level and above *)
-         Prune.Output.set_mode Prune.Output.Normal);
+let setup_output_mode json log_level =
+  if json then Prune.Output.set_mode Prune.Output.Json
+  else
+    match log_level with
+    | Some Logs.Error -> Prune.Output.set_mode Prune.Output.Quiet
+    | Some Logs.Debug | Some Logs.Info ->
+        Prune.Output.set_mode Prune.Output.Verbose
+    | Some Logs.Warning | Some Logs.App | None ->
+        Prune.Output.set_mode Prune.Output.Normal
 
-  (* If no paths provided, use current directory *)
+let validate_paths paths =
   let paths = if paths = [] then [ "." ] else paths in
-
-  (* Check for non-existent paths and separate files from directories *)
   let check_path path =
     if not (Sys.file_exists path) then `Missing
     else if Sys.is_directory path then `Dir
     else `File
   in
-
   let results = List.map (fun p -> (p, check_path p)) paths in
 
-  (* Report errors for non-existent paths *)
+  (* Check for missing paths *)
   let missing_paths =
     List.filter_map (function p, `Missing -> Some p | _ -> None) results
   in
-
   if missing_paths <> [] then (
     List.iter
       (fun p -> Prune.Output.error "%s: No such file or directory" p)
       missing_paths;
     exit 1);
 
-  (* Extract existing files and directories *)
+  (* Extract files and directories *)
   let files =
     List.filter_map (function p, `File -> Some p | _ -> None) results
   in
-
   let dirs =
     List.filter_map (function p, `Dir -> Some p | _ -> None) results
   in
@@ -124,7 +120,6 @@ let process_clean dry_run force step_wise use_merlin_server paths exclude_dirs
   let non_mli_files =
     List.filter (fun f -> not (Filename.check_suffix f ".mli")) files
   in
-
   if non_mli_files <> [] then (
     List.iter
       (fun f ->
@@ -133,40 +128,44 @@ let process_clean dry_run force step_wise use_merlin_server paths exclude_dirs
       non_mli_files;
     exit 1);
 
-  let root_dir = Sys.getcwd () in
+  (files, dirs)
 
-  (* Set merlin mode *)
+let setup_merlin_server use_merlin_server root_dir =
   set_merlin_mode (if use_merlin_server then `Server else `Single);
-
-  (* Register cleanup function to stop merlin server if using server mode *)
   let cleanup () = stop_merlin_server root_dir in
-  at_exit cleanup;
+  at_exit cleanup
 
-  (* Get all .mli files to analyze *)
+let determine_mode config =
+  if config.dry_run then `Dry_run
+  else if config.step_wise then `Single_pass
+  else `Iterative
+
+let handle_analysis_result = function
+  | Ok _stats -> ()
+  | Error (`Msg "Cancelled by user") -> ()
+  | Error (`Build_error ctx) -> Prune.System.display_failure_and_exit ctx
+  | Error e ->
+      Prune.Output.error "%a" pp_error e;
+      exit 1
+
+let process_clean dry_run force step_wise use_merlin_server paths exclude_dirs
+    log_level json =
+  let config = { dry_run; force; step_wise; use_merlin_server; json } in
+  setup_logs log_level;
+  setup_output_mode json log_level;
+
+  let files, dirs = validate_paths paths in
+  let root_dir = Sys.getcwd () in
+  setup_merlin_server use_merlin_server root_dir;
+
   let mli_files = get_mli_files root_dir files dirs in
-
-  (* Determine the mode based on flags *)
-  let mode =
-    if dry_run then `Dry_run else if step_wise then `Single_pass else `Iterative
-  in
+  let mode = determine_mode config in
 
   display_analyzing_message mli_files;
   if mode = `Iterative && List.length mli_files > 0 then Fmt.pr "@.";
 
-  match analyze ~yes:force ~exclude_dirs mode root_dir mli_files with
-  | Ok _stats ->
-      (* Summary is already printed by analyze *)
-      ()
-  | Error (`Msg "Cancelled by user") ->
-      (* User cancelled - exit silently *)
-      ()
-  | Error (`Build_error ctx) ->
-      (* Build failure - display output and exit with build's exit code *)
-      Prune.System.display_failure_and_exit ctx
-  | Error e ->
-      (* Other errors - use generic error code *)
-      Prune.Output.error "%a" pp_error e;
-      exit 1
+  analyze ~yes:config.force ~exclude_dirs mode root_dir mli_files
+  |> handle_analysis_result
 
 let process_doctor sample_mli log_level =
   setup_logs log_level;

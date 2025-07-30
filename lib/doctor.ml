@@ -28,7 +28,8 @@ let parse_merlin_response output =
     let class_field = json |> member "class" |> to_string_option in
     let cache = json |> member "cache" in
     (class_field, cache)
-  with _ -> (None, `Null)
+  with Yojson.Json_error _ | Yojson.Safe.Util.Type_error (_, _) ->
+    (None, `Null)
 
 (* Run command with timeout *)
 let run_with_timeout ?(timeout_secs = 5) cmd_str =
@@ -90,7 +91,7 @@ let check_merlin_cache_stats root_dir sample_mli =
             | _ ->
                 let miss = cmt |> member "miss" |> to_int_option in
                 Some miss
-          with _ -> None))
+          with Yojson.Safe.Util.Type_error (_, _) -> None))
 
 (* Check merlin project configuration using merlin itself *)
 let check_merlin_config root_dir =

@@ -14,7 +14,7 @@ let err_no_dune_project root_dir =
 (* {2 TTY and environment detection} *)
 
 (* Check if we're running in a TTY (for progress display) *)
-let is_tty () = try Unix.isatty Unix.stdout with _ -> false
+let is_tty () = try Unix.isatty Unix.stdout with Unix.Unix_error _ -> false
 
 (* {2 Dune version checking} *)
 
@@ -76,9 +76,10 @@ let parse_version version_str =
           ( int_of_string major,
             int_of_string minor,
             int_of_string (extract_number patch) )
-      with _ -> None)
+      with Failure _ -> None)
   | [ major; minor ] -> (
-      try Some (int_of_string major, int_of_string minor, 0) with _ -> None)
+      try Some (int_of_string major, int_of_string minor, 0)
+      with Failure _ -> None)
   | _ -> None
 
 (* Check if OCaml version meets minimum requirements *)
