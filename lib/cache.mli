@@ -25,7 +25,7 @@ val load : t -> string -> (unit, [ `Msg of string ]) result
 (** [load cache file] loads a file into the cache if not already present. *)
 
 val find_line : t -> string -> int -> string option
-(** [get_line cache file line_num] returns line [line_num] (1-indexed) from
+(** [find_line cache file line_num] returns line [line_num] (1-indexed) from
     [file]. Returns [None] if the file is not loaded or line number is out of
     bounds. *)
 
@@ -39,8 +39,8 @@ val clear_line : t -> string -> int -> unit
     string. *)
 
 val find_line_count : t -> string -> int option
-(** [get_line_count cache file] returns the number of lines in [file], or [None]
-    if the file is not loaded. *)
+(** [find_line_count cache file] returns the number of lines in [file], or
+    [None] if the file is not loaded. *)
 
 val has_changes : t -> string -> bool
 (** [has_changes cache file] returns true if [file] has pending changes to be
@@ -68,7 +68,7 @@ val get_ast : t -> string -> (ast_entry, [ `Msg of string ]) result
 (** {2 File content access} *)
 
 val find_file_content : t -> string -> string option
-(** [get_file_content cache file] returns the current content of [file] from
+(** [find_file_content cache file] returns the current content of [file] from
     cache as a single string. Returns [None] if the file is not loaded. *)
 
 val write : t -> string -> (unit, [ `Msg of string ]) result

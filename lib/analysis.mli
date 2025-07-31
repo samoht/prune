@@ -12,7 +12,7 @@ val get_unused_exports :
   ( (string * occurrence_info list) list * (string * occurrence_info list) list,
     error )
   result
-(** [find_unused_exports ~cache ?exclude_dirs root_dir mli_files] finds unused
+(** [get_unused_exports ~cache ?exclude_dirs root_dir mli_files] finds unused
     exports in the given .mli files within the project context. Returns
     (unused_by_file, excluded_only_by_file) where:
     - unused_by_file: symbols that are completely unused
