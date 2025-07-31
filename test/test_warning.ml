@@ -83,7 +83,7 @@ let test_parse_warnings () =
       check (list warning_info) "Warning.parse" expected result)
     test_cases
 
-let test_parse_warning_32_edge_cases () =
+let warning_32_edge_cases () =
   (* Test various edge cases for warning 32 *)
   let test_cases =
     [
@@ -161,7 +161,7 @@ Warning 34 [unused-type-declaration]: unused type unused_variant.|}
   in
   check (list warning_info) "parse warning 34" expected result
 
-let test_warning_type_detection () =
+let test_type_detection () =
   (* Test that we correctly identify warning types *)
   let test_warning_32_output =
     {|File "test.ml", line 1, characters 4-8:
@@ -173,7 +173,7 @@ Warning 32 [unused-value-declaration]: unused value test.|}
       check warning_type "warning type" Unused_value warning.warning_type
   | _ -> fail "Expected exactly one warning"
 
-let test_warning_type_preserved_in_processing () =
+let test_type_preserved () =
   (* Ensure warning types are preserved through processing *)
   let output =
     {|File "test.ml", line 1, characters 0-10:
@@ -193,7 +193,7 @@ Warning 32 [unused-value-declaration]: unused value bar.|}
             (Fmt.str "%a" Prune.pp_warning_type wtype))
     warnings
 
-let test_parser_does_not_mix_errors () =
+let test_parser_no_mix_errors () =
   (* Test that parser doesn't mix locations from different errors *)
   let output =
     {|File "lib/el.mli", line 16, characters 0-114:
@@ -244,7 +244,7 @@ Warning 32 [unused-value-declaration]: unused value reset.|}
             w.location.file)
     warnings
 
-let test_parser_handles_error_blocks_correctly () =
+let test_parser_error_blocks () =
   (* Test that parser correctly handles error blocks without mixing
      information *)
   let output =
@@ -343,7 +343,7 @@ Warning 32 [unused-value-declaration]: unused value baz.|}
       | _ -> failf "Unexpected warning name: %s" w.name)
     warnings
 
-let test_parse_warning_69_mutable_field () =
+let warning_69_mutable () =
   (* Test parsing warning 69 for mutable fields that are never mutated *)
   let output =
     {|File "lib/issue.ml", line 23, characters 2-31:
@@ -364,7 +364,7 @@ Error (warning 69 [unused-field]): mutable record field tracks is never mutated.
       check int "end col" 31 warning.location.end_col
   | _ -> fail "Expected exactly one warning"
 
-let test_parse_warning_69_regular_field () =
+let warning_69_regular () =
   (* Test parsing warning 69 for regular unused fields *)
   let output =
     {|File "lib/test.ml", line 10, characters 4-20:
@@ -387,22 +387,19 @@ let tests =
     [
       test_case "simple parsing" `Quick test_simple_parsing;
       test_case "basic parsing" `Quick test_parse_warnings;
-      test_case "edge cases" `Quick test_parse_warning_32_edge_cases;
+      test_case "edge cases" `Quick warning_32_edge_cases;
       test_case "warning 34 parsing" `Quick test_parse_warning_34_output;
-      test_case "warning type detection" `Quick test_warning_type_detection;
+      test_case "warning type detection" `Quick test_type_detection;
       test_case "warning type preserved in processing" `Quick
-        test_warning_type_preserved_in_processing;
-      test_case "parser does not mix errors" `Quick
-        test_parser_does_not_mix_errors;
+        test_type_preserved;
+      test_case "parser does not mix errors" `Quick test_parser_no_mix_errors;
       test_case "parser handles error blocks correctly" `Quick
-        test_parser_handles_error_blocks_correctly;
+        test_parser_error_blocks;
       test_case "parser multiline warning format" `Quick
         test_parser_multiline_warning_format;
       test_case "parser multiline consecutive warnings" `Quick
         test_parser_multiline_consecutive_warnings;
       test_case "parser mixed formats" `Quick test_parser_mixed_formats;
-      test_case "warning 69 mutable field" `Quick
-        test_parse_warning_69_mutable_field;
-      test_case "warning 69 regular field" `Quick
-        test_parse_warning_69_regular_field;
+      test_case "warning 69 mutable field" `Quick warning_69_mutable;
+      test_case "warning 69 regular field" `Quick warning_69_regular;
     ] )

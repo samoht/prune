@@ -84,7 +84,7 @@ let make name age = { name; age; address = "unused" }
       check bool "field usage still present" true
         (check_field_usage "address" "\"unused\"" new_content)
 
-let test_field_removal_preserves_other_fields () =
+let test_field_removal_preserves_fields () =
   let content =
     {|
 type config = {
@@ -189,6 +189,6 @@ let tests =
     [
       test_case "unused field removal" `Quick test_unused_field_removal;
       test_case "field removal preserves other fields" `Quick
-        test_field_removal_preserves_other_fields;
+        test_field_removal_preserves_fields;
       test_case "field removal in module" `Quick test_field_removal_in_module;
     ] )

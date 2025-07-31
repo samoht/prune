@@ -569,7 +569,7 @@ end
       cleanup_temp_file temp_file;
       fail ("Field info detection failed: " ^ msg)
 
-let test_field_bounds_max_int_clamping () =
+let test_field_bounds_clamping () =
   let content =
     {|type person = {
   name : string;
@@ -638,5 +638,5 @@ let tests =
       test_case "field info type definition" `Quick
         test_field_info_type_definition;
       test_case "field bounds max_int clamping" `Quick
-        test_field_bounds_max_int_clamping;
+        test_field_bounds_clamping;
     ] )

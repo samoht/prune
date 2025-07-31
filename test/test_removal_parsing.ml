@@ -18,7 +18,7 @@ let read_file file =
 
 (* Tests for documentation comment removal behavior *)
 
-let test_doc_comment_removal_single_line () =
+let test_doc_comment_single_line () =
   let content =
     {|(** This is a doc comment *)
 let value = 42
@@ -54,7 +54,7 @@ let other = 33|}
       check bool "value removed" false
         (Re.execp (Re.compile (Re.str "value")) new_content)
 
-let test_doc_comment_removal_multi_line () =
+let test_doc_comment_multi_line () =
   let content =
     {|(** This is a multi-line
     doc comment that spans
@@ -258,9 +258,9 @@ let tests =
   ( "Removal parsing",
     [
       test_case "doc comment removal single line" `Quick
-        test_doc_comment_removal_single_line;
+        test_doc_comment_single_line;
       test_case "doc comment removal multi line" `Quick
-        test_doc_comment_removal_multi_line;
+        test_doc_comment_multi_line;
       test_case "trailing doc comment removal" `Quick
         test_trailing_doc_comment_removal;
       test_case "nested comments handling" `Quick test_nested_comments_handling;

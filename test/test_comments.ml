@@ -27,7 +27,7 @@ let create_temp_file content =
   temp_file
 
 (* Test the trailing comment detection logic through actual removal *)
-let test_trailing_comment_stops_at_blank_line () =
+let test_trailing_comment_blank_line () =
   let cache = Cache.v () in
 
   (* Create test content with comments separated by blank lines *)
@@ -72,7 +72,7 @@ val bar : string -> string|}
   check bool "bar declaration should be preserved" true
     (contains new_content "val bar")
 
-let test_leading_comment_not_removed_for_used_item () =
+let test_leading_comment_preserved () =
   let cache = Cache.v () in
 
   (* Create test content similar to the real-world example *)
@@ -118,7 +118,7 @@ val compute : t -> t
 let tests =
   [
     test_case "trailing comment stops at blank line" `Quick
-      test_trailing_comment_stops_at_blank_line;
+      test_trailing_comment_blank_line;
     test_case "leading comment not removed for used item" `Quick
-      test_leading_comment_not_removed_for_used_item;
+      test_leading_comment_preserved;
   ]
