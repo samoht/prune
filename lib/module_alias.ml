@@ -89,7 +89,7 @@ let is_multiline_alias ~cache file start_line end_line_opt =
   let rec collect_lines acc line_num =
     if line_num > end_line then String.concat " " (List.rev acc)
     else
-      match Cache.find_line cache file line_num with
+      match Cache.line cache file line_num with
       | None -> String.concat " " (List.rev acc)
       | Some line -> collect_lines (String.trim line :: acc) (line_num + 1)
   in

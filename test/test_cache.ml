@@ -25,16 +25,14 @@ let test_create_and_clear () =
   | Error (`Msg msg) -> fail msg);
 
   (* Verify file is loaded *)
-  check (option string) "line 1" (Some "line1")
-    (Cache.find_line cache temp_file 1);
-  check (option string) "line 2" (Some "line2")
-    (Cache.find_line cache temp_file 2);
+  check (option string) "line 1" (Some "line1") (Cache.line cache temp_file 1);
+  check (option string) "line 2" (Some "line2") (Cache.line cache temp_file 2);
 
   (* Clear cache *)
   Cache.clear cache;
 
   (* Verify cache is empty *)
-  check (option string) "after clear" None (Cache.find_line cache temp_file 1);
+  check (option string) "after clear" None (Cache.line cache temp_file 1);
 
   Sys.remove temp_file
 
@@ -44,7 +42,7 @@ let test_load_and_get_line () =
   let temp_file = create_temp_file content in
 
   (* Test get_line before loading *)
-  check (option string) "before load" None (Cache.find_line cache temp_file 1);
+  check (option string) "before load" None (Cache.line cache temp_file 1);
 
   (* Load file *)
   (match Cache.load cache temp_file with
@@ -53,15 +51,15 @@ let test_load_and_get_line () =
 
   (* Test get_line after loading *)
   check (option string) "line 1" (Some "first line")
-    (Cache.find_line cache temp_file 1);
+    (Cache.line cache temp_file 1);
   check (option string) "line 2" (Some "second line")
-    (Cache.find_line cache temp_file 2);
+    (Cache.line cache temp_file 2);
   check (option string) "line 3" (Some "third line")
-    (Cache.find_line cache temp_file 3);
+    (Cache.line cache temp_file 3);
 
   (* Test out of bounds *)
-  check (option string) "line 0" None (Cache.find_line cache temp_file 0);
-  check (option string) "line 4" None (Cache.find_line cache temp_file 4);
+  check (option string) "line 0" None (Cache.line cache temp_file 0);
+  check (option string) "line 4" None (Cache.line cache temp_file 4);
 
   Sys.remove temp_file
 
@@ -80,11 +78,11 @@ let test_replace_line () =
 
   (* Verify replacement *)
   check (option string) "line 1 unchanged" (Some "AAA")
-    (Cache.find_line cache temp_file 1);
+    (Cache.line cache temp_file 1);
   check (option string) "line 2 replaced" (Some "XXX")
-    (Cache.find_line cache temp_file 2);
+    (Cache.line cache temp_file 2);
   check (option string) "line 3 unchanged" (Some "CCC")
-    (Cache.find_line cache temp_file 3);
+    (Cache.line cache temp_file 3);
 
   (* Test out of bounds replace *)
   Cache.replace_line cache temp_file 0 "invalid";
@@ -92,7 +90,7 @@ let test_replace_line () =
 
   (* Lines should be unchanged *)
   check (option string) "after invalid replace" (Some "XXX")
-    (Cache.find_line cache temp_file 2);
+    (Cache.line cache temp_file 2);
 
   Sys.remove temp_file
 
@@ -111,11 +109,11 @@ let test_clear_line () =
 
   (* Verify clearing *)
   check (option string) "line 1 unchanged" (Some "line1")
-    (Cache.find_line cache temp_file 1);
+    (Cache.line cache temp_file 1);
   check (option string) "line 2 cleared" (Some "")
-    (Cache.find_line cache temp_file 2);
+    (Cache.line cache temp_file 2);
   check (option string) "line 3 unchanged" (Some "line3")
-    (Cache.find_line cache temp_file 3);
+    (Cache.line cache temp_file 3);
 
   Sys.remove temp_file
 
@@ -124,7 +122,7 @@ let test_get_line_count () =
 
   (* Test non-existent file *)
   check (option int) "non-existent file" None
-    (Cache.find_line_count cache "nonexistent.txt");
+    (Cache.line_count cache "nonexistent.txt");
 
   let content = "one\ntwo\nthree\nfour" in
   let temp_file = create_temp_file content in
@@ -135,16 +133,14 @@ let test_get_line_count () =
   | Error (`Msg msg) -> fail msg);
 
   (* Check line count *)
-  check (option int) "line count" (Some 4)
-    (Cache.find_line_count cache temp_file);
+  check (option int) "line count" (Some 4) (Cache.line_count cache temp_file);
 
   (* Test empty file *)
   let empty_file = create_temp_file "" in
   (match Cache.load cache empty_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
-  check (option int) "empty file" (Some 1)
-    (Cache.find_line_count cache empty_file);
+  check (option int) "empty file" (Some 1) (Cache.line_count cache empty_file);
 
   Sys.remove temp_file;
   Sys.remove empty_file
@@ -246,13 +242,13 @@ let test_multiple_files () =
 
   (* Check independence *)
   check (option string) "file1 line 1" (Some "modified_file1")
-    (Cache.find_line cache file1 1);
+    (Cache.line cache file1 1);
   check (option string) "file1 line 2" (Some "file1_line2")
-    (Cache.find_line cache file1 2);
+    (Cache.line cache file1 2);
   check (option string) "file2 line 1" (Some "file2_line1")
-    (Cache.find_line cache file2 1);
+    (Cache.line cache file2 1);
   check (option string) "file2 line 2" (Some "modified_file2")
-    (Cache.find_line cache file2 2);
+    (Cache.line cache file2 2);
 
   Sys.remove file1;
   Sys.remove file2

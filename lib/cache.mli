@@ -24,10 +24,9 @@ val clear : t -> unit
 val load : t -> string -> (unit, [ `Msg of string ]) result
 (** [load cache file] loads a file into the cache if not already present. *)
 
-val find_line : t -> string -> int -> string option
-(** [find_line cache file line_num] returns line [line_num] (1-indexed) from
-    [file]. Returns [None] if the file is not loaded or line number is out of
-    bounds. *)
+val line : t -> string -> int -> string option
+(** [line cache file line_num] returns line [line_num] (1-indexed) from [file].
+    Returns [None] if the file is not loaded or line number is out of bounds. *)
 
 val replace_line : t -> string -> int -> string -> unit
 (** [replace_line cache file line_num new_content] replaces line [line_num]
@@ -38,9 +37,9 @@ val clear_line : t -> string -> int -> unit
 (** [clear_line cache file line_num] replaces line [line_num] with an empty
     string. *)
 
-val find_line_count : t -> string -> int option
-(** [find_line_count cache file] returns the number of lines in [file], or
-    [None] if the file is not loaded. *)
+val line_count : t -> string -> int option
+(** [line_count cache file] returns the number of lines in [file], or [None] if
+    the file is not loaded. *)
 
 val has_changes : t -> string -> bool
 (** [has_changes cache file] returns true if [file] has pending changes to be
@@ -60,16 +59,16 @@ type ast_entry =
   | Implementation of Ppxlib.structure
   | Interface of Ppxlib.signature  (** AST representation for cached files *)
 
-val get_ast : t -> string -> (ast_entry, [ `Msg of string ]) result
-(** [get_ast cache file] returns the parsed AST for [file], parsing and caching
-    it if necessary. Returns an error if the file is not loaded or parsing
-    fails. *)
+val ast : t -> string -> (ast_entry, [ `Msg of string ]) result
+(** [ast cache file] returns the parsed AST for [file], parsing and caching it
+    if necessary. Returns an error if the file is not loaded or parsing fails.
+*)
 
 (** {2 File content access} *)
 
-val find_file_content : t -> string -> string option
-(** [find_file_content cache file] returns the current content of [file] from
-    cache as a single string. Returns [None] if the file is not loaded. *)
+val file_content : t -> string -> string option
+(** [file_content cache file] returns the current content of [file] from cache
+    as a single string. Returns [None] if the file is not loaded. *)
 
 val write : t -> string -> (unit, [ `Msg of string ]) result
 (** [write cache file] writes the cached content of [file] to disk. Returns an

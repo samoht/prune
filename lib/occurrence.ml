@@ -61,7 +61,7 @@ let get_identifier_column ~cache (symbol : symbol_info) =
     | Type -> (
         (* For types, we need to handle type parameters *)
         match
-          Cache.find_line cache symbol.location.file symbol.location.start_line
+          Cache.line cache symbol.location.file symbol.location.start_line
         with
         | Some line_content -> get_type_identifier_column line_content col
         | None -> col + 5 (* Fallback to simple offset *))

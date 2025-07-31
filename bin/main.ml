@@ -36,7 +36,7 @@ let rec collect_mli_files acc dir =
             | _ -> acc)
         acc paths
 
-let get_mli_files root_dir files dirs =
+let mli_files root_dir files dirs =
   if files = [] && dirs = [] then
     (* No specific paths - find all .mli files in project *)
     let root_path = Fpath.v root_dir in
@@ -159,13 +159,13 @@ let process_clean config paths exclude_dirs log_level =
   let root_dir = Sys.getcwd () in
   setup_merlin_server use_merlin_server root_dir;
 
-  let mli_files = get_mli_files root_dir files dirs in
+  let mli_files_list = mli_files root_dir files dirs in
   let mode = determine_mode config in
 
-  display_analyzing_message mli_files;
-  if mode = `Iterative && List.length mli_files > 0 then Fmt.pr "@.";
+  display_analyzing_message mli_files_list;
+  if mode = `Iterative && List.length mli_files_list > 0 then Fmt.pr "@.";
 
-  analyze ~yes:config.force ~exclude_dirs mode root_dir mli_files
+  analyze ~yes:config.force ~exclude_dirs mode root_dir mli_files_list
   |> handle_analysis_result
 
 let process_doctor sample_mli log_level =
@@ -195,11 +195,11 @@ let process_show format output_dir paths use_merlin_server log_level =
       (fun p -> Sys.file_exists p && not (Sys.is_directory p))
       paths
   in
-  let mli_files = get_mli_files root_dir files dirs in
+  let mli_files_list = mli_files root_dir files dirs in
 
-  display_analyzing_message mli_files;
+  display_analyzing_message mli_files_list;
 
-  match Show.run ~format ~output_dir ~root_dir ~mli_files with
+  match Show.run ~format ~output_dir ~root_dir ~mli_files:mli_files_list with
   | Ok () -> ()
   | Error (`Msg msg) ->
       Prune.Output.error "%s" msg;

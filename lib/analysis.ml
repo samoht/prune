@@ -26,7 +26,7 @@ and outline_item_to_symbol ~cache (item : outline_item) =
       match Cache.load cache item.location.file with
       | Error _ -> create_symbol_with_children ~cache item
       | Ok () -> (
-          match Cache.find_file_content cache item.location.file with
+          match Cache.file_content cache item.location.file with
           | None -> create_symbol_with_children ~cache item
           | Some content ->
               if
@@ -282,7 +282,7 @@ let analyze_files_for_unused ~cache exclude_dirs root_dir files =
   ( group_occurrences_by_file filtered_unused,
     group_occurrences_by_file excluded_only )
 
-let get_all_symbol_occurrences ~cache ?(exclude_dirs = []) root_dir files =
+let all_symbol_occurrences ~cache ?(exclude_dirs = []) root_dir files =
   match System.validate_dune_project root_dir with
   | Error (`Msg e) -> Error (`Msg e)
   | Ok () ->
@@ -292,7 +292,7 @@ let get_all_symbol_occurrences ~cache ?(exclude_dirs = []) root_dir files =
       in
       Ok occurrence_data
 
-let get_unused_exports ~cache ?(exclude_dirs = []) root_dir files =
+let unused_exports ~cache ?(exclude_dirs = []) root_dir files =
   match System.validate_dune_project root_dir with
   | Error (`Msg e) -> Error (`Msg e)
   | Ok () ->

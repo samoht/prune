@@ -38,7 +38,7 @@ let get_preceding_comment_start cache file start_line_idx =
     let rec scan_backwards line_idx in_comment_block =
       if line_idx < 0 then 0
       else
-        match Cache.find_line cache file (line_idx + 1) with
+        match Cache.line cache file (line_idx + 1) with
         | None -> line_idx + 1
         | Some line ->
             if is_empty_line line then
@@ -54,7 +54,7 @@ let get_preceding_comment_start cache file start_line_idx =
               let rec find_multi_start idx depth =
                 if idx < 0 then 0
                 else
-                  match Cache.find_line cache file (idx + 1) with
+                  match Cache.line cache file (idx + 1) with
                   | None -> idx + 1
                   | Some l ->
                       let rec count_markers i starts ends =
@@ -81,7 +81,7 @@ let get_preceding_comment_start cache file start_line_idx =
 let get_trailing_comment_end cache file end_line_idx =
   Log.debug (fun m ->
       m "get_trailing_comment_end: file=%s end_line_idx=%d" file end_line_idx);
-  match Cache.find_line_count cache file with
+  match Cache.line_count cache file with
   | None -> end_line_idx
   | Some max_lines ->
       if end_line_idx >= max_lines then end_line_idx
@@ -89,7 +89,7 @@ let get_trailing_comment_end cache file end_line_idx =
         let scan_forward line_idx =
           if line_idx >= max_lines then line_idx
           else
-            match Cache.find_line cache file (line_idx + 1) with
+            match Cache.line cache file (line_idx + 1) with
             | None ->
                 Log.debug (fun m ->
                     m "  scan_forward: no line at %d, returning %d"
@@ -111,7 +111,7 @@ let get_trailing_comment_end cache file end_line_idx =
                     let rec find_end idx =
                       if idx >= max_lines - 1 then max_lines - 1
                       else
-                        match Cache.find_line cache file (idx + 1) with
+                        match Cache.line cache file (idx + 1) with
                         | None -> idx
                         | Some l ->
                             if line_contains_comment_end l then idx + 1

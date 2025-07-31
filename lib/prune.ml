@@ -1,7 +1,6 @@
 (* Main prune library - public interface and orchestration *)
 
 open Rresult
-open Analysis
 open Removal
 module Log = (val Logs.src_log (Logs.Src.create "prune") : Logs.LOG)
 include Types
@@ -199,7 +198,7 @@ let get_and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir
   | Error (`Build_failed _) ->
       Ok 0 (* Continue if build fails - we may be able to fix it *)
   | Ok () -> (
-      match get_unused_exports ~cache ~exclude_dirs root_dir mli_files with
+      match Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files with
       | Error e -> Error e
       | Ok (unused_by_file, excluded_only_by_file) ->
           let all_removable = unused_by_file @ excluded_only_by_file in
@@ -308,7 +307,7 @@ type mode = [ `Dry_run | `Single_pass | `Iterative ]
 (* Handle dry run mode *)
 let analyze_dry_run ~cache ~exclude_dirs root_dir mli_files =
   with_built_project root_dir (fun _ctx ->
-      get_unused_exports ~cache ~exclude_dirs root_dir mli_files
+      Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files
       >>= fun (unused_by_file, excluded_only_by_file) ->
       match (unused_by_file, excluded_only_by_file) with
       | [], [] ->
@@ -333,7 +332,7 @@ let analyze_dry_run ~cache ~exclude_dirs root_dir mli_files =
 (* Handle single pass mode *)
 let analyze_single_pass ~cache ~yes ~exclude_dirs root_dir mli_files =
   with_built_project root_dir (fun _ctx ->
-      get_unused_exports ~cache ~exclude_dirs root_dir mli_files
+      Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files
       >>= fun (unused_by_file, excluded_only_by_file) ->
       (* Combine unused and excluded-only exports for removal *)
       let all_removable = unused_by_file @ excluded_only_by_file in

@@ -54,13 +54,13 @@ let location_of_ppxlib_location file (loc : Location.t) : T.location =
 (* AST cache access *)
 
 let get_ast ~cache file =
-  match Cache.get_ast cache file with
+  match Cache.ast cache file with
   | Ok (Implementation ast) -> Ok ast
   | Ok (Interface _) -> err_expected_impl file
   | Error e -> Error e
 
 let get_interface_ast ~cache file =
-  match Cache.get_ast cache file with
+  match Cache.ast cache file with
   | Ok (Interface ast) -> Ok ast
   | Ok (Implementation _) -> err_expected_intf file
   | Error e -> Error e

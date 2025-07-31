@@ -4,7 +4,7 @@ open Types
 
 (** {2 Main analysis orchestration} *)
 
-val get_unused_exports :
+val unused_exports :
   cache:Cache.t ->
   ?exclude_dirs:string list ->
   string ->
@@ -12,7 +12,7 @@ val get_unused_exports :
   ( (string * occurrence_info list) list * (string * occurrence_info list) list,
     error )
   result
-(** [get_unused_exports ~cache ?exclude_dirs root_dir mli_files] finds unused
+(** [unused_exports ~cache ?exclude_dirs root_dir mli_files] finds unused
     exports in the given .mli files within the project context. Returns
     (unused_by_file, excluded_only_by_file) where:
     - unused_by_file: symbols that are completely unused
@@ -21,13 +21,13 @@ val get_unused_exports :
 
 (** {2 Functions for other analysis tools} *)
 
-val get_all_symbol_occurrences :
+val all_symbol_occurrences :
   cache:Cache.t ->
   ?exclude_dirs:string list ->
   string ->
   string list ->
   (occurrence_info list, error) result
-(** [get_all_symbol_occurrences ~cache ?exclude_dirs root_dir mli_files] gets
+(** [all_symbol_occurrences ~cache ?exclude_dirs root_dir mli_files] gets
     occurrence information for all symbols in the given .mli files. Unlike
     find_unused_exports, this returns all symbols regardless of usage. *)
 

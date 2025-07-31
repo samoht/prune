@@ -339,7 +339,7 @@ let run ~format ~output_dir ~root_dir ~mli_files =
   if mli_files = [] then Error (`Msg "No .mli files found to analyze")
   else
     (* Use Analysis module to get all symbol occurrences *)
-    match Analysis.get_all_symbol_occurrences ~cache root_dir mli_files with
+    match Analysis.all_symbol_occurrences ~cache root_dir mli_files with
     | Error (`Build_error _) ->
         Error (`Msg "Build failed - please fix build errors first")
     | Error (`Msg msg) -> Error (`Msg msg)

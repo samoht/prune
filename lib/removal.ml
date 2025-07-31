@@ -119,7 +119,7 @@ let find_enclosing_expression _root_dir file line col ~location_precision ~kind
 
 (* Mark lines for removal *)
 let mark_lines_for_removal cache file start_line end_line =
-  match Cache.find_line_count cache file with
+  match Cache.line_count cache file with
   | None -> Array.make 0 false
   | Some line_count ->
       let to_remove = Array.make line_count false in
@@ -170,7 +170,7 @@ let replace_line_range line start_col end_col =
 (* Handle single-line field removal *)
 let handle_single_line_field ~is_definition cache file loc replacements =
   let line_idx = loc.start_line - 1 in
-  match Cache.find_line cache file loc.start_line with
+  match Cache.line cache file loc.start_line with
   | None -> ()
   | Some line ->
       let start_col =
@@ -186,7 +186,7 @@ let handle_single_line_field ~is_definition cache file loc replacements =
 let handle_multi_line_field cache file loc replacements =
   (* Replace first line *)
   let first_line_idx = loc.start_line - 1 in
-  (match Cache.find_line cache file loc.start_line with
+  (match Cache.line cache file loc.start_line with
   | None -> ()
   | Some first_line ->
       let new_first =
@@ -200,7 +200,7 @@ let handle_multi_line_field cache file loc replacements =
   done;
   (* Handle last line *)
   let last_line_idx = loc.end_line - 1 in
-  match Cache.find_line cache file loc.end_line with
+  match Cache.line cache file loc.end_line with
   | None -> ()
   | Some last_line ->
       let new_last = replace_line_range last_line 0 loc.end_col in
@@ -235,14 +235,14 @@ let process_field_usage_removal = process_field_removal ~is_definition:false
 (* Process open statement removal *)
 let process_open_removal cache file operation =
   let line_idx = operation.location.start_line - 1 in
-  match Cache.find_line cache file operation.location.start_line with
+  match Cache.line cache file operation.location.start_line with
   | Some _ -> Characters_replaced [ (line_idx, "") ]
   | None -> Characters_replaced []
 
 (* Process mutable keyword removal *)
 let process_mutable_keyword_removal cache file operation =
   let line_idx = operation.location.start_line - 1 in
-  match Cache.find_line cache file operation.location.start_line with
+  match Cache.line cache file operation.location.start_line with
   | Some line_content -> (
       (* Find and remove the "mutable " keyword (including the space after
          it) *)
@@ -484,7 +484,7 @@ let replace_type_with_unit cache file loc =
           err_no_type_eq loc.start_line
       | Some eq_loc -> (
           (* Replace from after the equals sign to the end with " unit" *)
-          match Cache.find_line cache file eq_loc.start_line with
+          match Cache.line cache file eq_loc.start_line with
           | None -> ()
           | Some line ->
               let before_eq_and_eq = String.sub line 0 eq_loc.end_col in
@@ -498,7 +498,7 @@ let replace_type_with_unit cache file loc =
 (* Replace a record construction with () *)
 let replace_record_with_unit cache file loc =
   if loc.start_line = loc.end_line then
-    match Cache.find_line cache file loc.start_line with
+    match Cache.line cache file loc.start_line with
     | None -> ()
     | Some line ->
         let before =
@@ -512,7 +512,7 @@ let replace_record_with_unit cache file loc =
         Cache.replace_line cache file loc.start_line (before ^ "()" ^ after)
   else
     (* Multi-line record *)
-    match Cache.find_line cache file loc.start_line with
+    match Cache.line cache file loc.start_line with
     | None -> ()
     | Some first_line -> (
         let before =
@@ -525,7 +525,7 @@ let replace_record_with_unit cache file loc =
           Cache.clear_line cache file i
         done;
         (* Handle last line *)
-        match Cache.find_line cache file loc.end_line with
+        match Cache.line cache file loc.end_line with
         | None -> ()
         | Some last_line ->
             let after =

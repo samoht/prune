@@ -78,7 +78,7 @@ let load cache file =
           Ok ())
 
 (* Get a single line from cache *)
-let find_line cache file line_num =
+let line cache file line_num =
   match Hashtbl.find_opt cache.files file with
   | None -> None
   | Some entry ->
@@ -112,7 +112,7 @@ let replace_line cache file line_num new_content =
 let clear_line cache file line_num = replace_line cache file line_num ""
 
 (* Get the number of lines in a file *)
-let find_line_count cache file =
+let line_count cache file =
   match Hashtbl.find_opt cache.files file with
   | None -> None
   | Some entry -> Some (Array.length entry.lines)
@@ -135,7 +135,7 @@ let is_file_empty cache file =
       Array.for_all (fun line -> String.trim line = "") entry.lines
 
 (* Get the full content of a file from cache *)
-let find_file_content cache file =
+let file_content cache file =
   match Hashtbl.find_opt cache.files file with
   | None -> None
   | Some entry -> Some (String.concat "\n" (Array.to_list entry.lines))
@@ -159,7 +159,7 @@ let parse_ast_for_entry file entry =
   | e -> err_ast_parse_failed file e
 
 (* Get AST from cache, parsing if necessary *)
-let get_ast cache file =
+let ast cache file =
   match Hashtbl.find_opt cache.files file with
   | None -> err_file_not_cached file
   | Some entry -> (
