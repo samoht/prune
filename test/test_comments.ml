@@ -9,6 +9,23 @@ let read_file file =
   close_in ic;
   content
 
+(* Helper to check if a string contains a substring *)
+let contains s sub =
+  let rec search i =
+    if i + String.length sub > String.length s then false
+    else if String.sub s i (String.length sub) = sub then true
+    else search (i + 1)
+  in
+  search 0
+
+(* Helper to create a temporary test file *)
+let create_temp_file content =
+  let temp_file = Filename.temp_file "test_comments" ".mli" in
+  let oc = open_out temp_file in
+  output_string oc content;
+  close_out oc;
+  temp_file
+
 (* Test the trailing comment detection logic through actual removal *)
 let test_trailing_comment_stops_at_blank_line () =
   let cache = Cache.v () in
@@ -22,10 +39,7 @@ let test_trailing_comment_stops_at_blank_line () =
 val bar : string -> string|}
   in
 
-  let temp_file = Filename.temp_file "test_comments" ".mli" in
-  let oc = open_out temp_file in
-  output_string oc content;
-  close_out oc;
+  let temp_file = create_temp_file content in
 
   (* Create a warning for foo to test comment removal *)
   let warning : warning_info =
@@ -51,16 +65,6 @@ val bar : string -> string|}
   (* Print the content for debugging *)
   Printf.printf "\nNew content:\n%s\n" new_content;
 
-  (* The leading comment for bar should still be there *)
-  let contains s sub =
-    let rec search i =
-      if i + String.length sub > String.length s then false
-      else if String.sub s i (String.length sub) = sub then true
-      else search (i + 1)
-    in
-    search 0
-  in
-
   (* The blank line stops the trailing comment scan, so the leading comment for
      bar is NOT included in foo's removal and remains in the file *)
   check bool "Leading comment for bar preserved (not part of foo)" true
@@ -82,10 +86,7 @@ val compute : t -> t
 (** This doc comment should NOT be removed because compute is not being removed *)|}
   in
 
-  let temp_file = Filename.temp_file "test_comments" ".mli" in
-  let oc = open_out temp_file in
-  output_string oc content;
-  close_out oc;
+  let temp_file = create_temp_file content in
 
   (* Create a warning only for the unused type *)
   let warning : warning_info =
@@ -109,15 +110,6 @@ val compute : t -> t
   Sys.remove temp_file;
 
   (* The doc comment for compute should still be there *)
-  let contains s sub =
-    let rec search i =
-      if i + String.length sub > String.length s then false
-      else if String.sub s i (String.length sub) = sub then true
-      else search (i + 1)
-    in
-    search 0
-  in
-
   check bool "Doc comment for compute should be preserved" true
     (contains new_content "should NOT be removed");
   check bool "compute declaration should be preserved" true

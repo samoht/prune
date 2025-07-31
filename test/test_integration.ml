@@ -62,6 +62,27 @@ let with_temp_project test_name content_mli content_ml f =
     raise e
 
 (* Test the full removal flow with real files *)
+(* Helper to create unused symbols for test *)
+let create_unused_symbols mli_file =
+  [
+    {
+      name = "unused";
+      kind = Value;
+      location =
+        location mli_file ~line:5 ~start_col:0 (* Start of line *)
+          ~end_line:5 ~end_col:29
+        (* End of "val unused : string -> string" *);
+    };
+    {
+      name = "unused_t";
+      kind = Type;
+      location =
+        location mli_file ~line:11 ~start_col:0 (* Start of line *)
+          ~end_line:11 ~end_col:21
+        (* End of "type unused_t = float" *);
+    };
+  ]
+
 let test_remove_unused_exports_real () =
   let mli_content =
     {|(** Used value *)
@@ -86,27 +107,7 @@ type unused_t = float|}
 
   with_temp_project "test_removal" mli_content ml_content
     (fun root_dir mli_file _ml_file ->
-      let symbols =
-        [
-          {
-            name = "unused";
-            kind = Value;
-            location =
-              location mli_file ~line:5 ~start_col:0 (* Start of line *)
-                ~end_line:5 ~end_col:29
-              (* End of "val unused : string -> string" *);
-          };
-          {
-            name = "unused_t";
-            kind = Type;
-            location =
-              location mli_file ~line:11 ~start_col:0 (* Start of line *)
-                ~end_line:11 ~end_col:21
-              (* End of "type unused_t = float" *);
-          };
-        ]
-      in
-
+      let symbols = create_unused_symbols mli_file in
       let cache = Cache.v () in
       match remove_unused_exports ~cache root_dir mli_file symbols with
       | Error e -> fail (Format.asprintf "Unexpected error: %a" pp_error e)

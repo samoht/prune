@@ -148,9 +148,10 @@ let handle_analysis_result = function
       Prune.Output.error "%a" pp_error e;
       exit 1
 
-let process_clean dry_run force step_wise use_merlin_server paths exclude_dirs
-    log_level json =
-  let config = { dry_run; force; step_wise; use_merlin_server; json } in
+let process_clean config paths exclude_dirs log_level =
+  let { dry_run = _; force = _; step_wise = _; use_merlin_server; json } =
+    config
+  in
   setup_logs log_level;
   setup_output_mode json log_level;
 
@@ -280,9 +281,27 @@ let clean_cmd =
   in
   let info = Cmd.info "clean" ~doc ~man in
   let term =
+    let build_config dry_run force step_wise use_merlin_server json =
+      { dry_run; force; step_wise; use_merlin_server; json }
+    in
     Term.(
-      const process_clean $ dry_run $ force $ step_wise $ merlin_server $ paths
-      $ exclude_dirs $ Logs_cli.level ~env () $ json)
+      const
+        (fun
+          dry_run
+          force
+          step_wise
+          use_merlin_server
+          json
+          paths
+          exclude_dirs
+          log_level
+        ->
+          let config =
+            build_config dry_run force step_wise use_merlin_server json
+          in
+          process_clean config paths exclude_dirs log_level)
+      $ dry_run $ force $ step_wise $ merlin_server $ json $ paths
+      $ exclude_dirs $ Logs_cli.level ~env ())
   in
   Cmd.v info term
 

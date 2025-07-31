@@ -25,25 +25,25 @@ Warning 32 [unused-value-declaration]: unused value unused_helper.|}
       check int "line" 15 w.location.start_line
   | _ -> fail "Expected exactly one warning"
 
-let test_parse_warnings () =
-  let test_cases =
-    [
-      (* Test single warning *)
-      ( {|File "lib/prune.ml", line 15, characters 4-17:
+(* Helper to create single warning test case *)
+let single_warning_case =
+  ( {|File "lib/prune.ml", line 15, characters 4-17:
 15 |     let unused_helper x = x + 1
          ^^^^^^^^^^^^^
 Warning 32 [unused-value-declaration]: unused value unused_helper.|},
-        [
-          {
-            location =
-              Prune.location "lib/prune.ml" ~line:15 ~start_col:4 ~end_col:17;
-            name = "unused_helper";
-            warning_type = Unused_value;
-            location_precision = Prune.Needs_enclosing_definition;
-          };
-        ] );
-      (* Test multiple warnings *)
-      ( {|File "lib/test.ml", line 10, characters 2-15:
+    [
+      {
+        location =
+          Prune.location "lib/prune.ml" ~line:15 ~start_col:4 ~end_col:17;
+        name = "unused_helper";
+        warning_type = Unused_value;
+        location_precision = Prune.Needs_enclosing_definition;
+      };
+    ] )
+
+(* Helper to create multiple warnings test case *)
+let multiple_warnings_case =
+  ( {|File "lib/test.ml", line 10, characters 2-15:
 10 |   let unused_val = 42
        ^^^^^^^^^^^^^
 Warning 32 [unused-value-declaration]: unused value unused_val.
@@ -51,22 +51,28 @@ File "lib/test.ml", line 20, characters 4-20:
 20 | type unused_type = int
          ^^^^^^^^^^^^
 Warning 34 [unused-type-declaration]: unused type unused_type.|},
-        [
-          {
-            location =
-              Prune.location "lib/test.ml" ~line:10 ~start_col:2 ~end_col:15;
-            name = "unused_val";
-            warning_type = Unused_value;
-            location_precision = Prune.Needs_enclosing_definition;
-          };
-          {
-            location =
-              Prune.location "lib/test.ml" ~line:20 ~start_col:4 ~end_col:20;
-            name = "unused_type";
-            warning_type = Unused_type;
-            location_precision = Prune.Exact_definition;
-          };
-        ] );
+    [
+      {
+        location =
+          Prune.location "lib/test.ml" ~line:10 ~start_col:2 ~end_col:15;
+        name = "unused_val";
+        warning_type = Unused_value;
+        location_precision = Prune.Needs_enclosing_definition;
+      };
+      {
+        location =
+          Prune.location "lib/test.ml" ~line:20 ~start_col:4 ~end_col:20;
+        name = "unused_type";
+        warning_type = Unused_type;
+        location_precision = Prune.Exact_definition;
+      };
+    ] )
+
+let test_parse_warnings () =
+  let test_cases =
+    [
+      single_warning_case;
+      multiple_warnings_case;
       (* Test with no warnings *)
       ({|Build successful with no warnings|}, []);
     ]

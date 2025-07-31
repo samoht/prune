@@ -15,6 +15,29 @@ let read_file file =
   close_in ic;
   content
 
+(* Helper to check field presence in type definition *)
+let check_field_in_type field_name content =
+  let field_re =
+    Re.(
+      compile
+        (seq
+           [
+             str field_name;
+             rep any;
+             str ":";
+             rep any;
+             rep (compl [ char ';'; char '}' ]);
+           ]))
+  in
+  Re.execp field_re content
+
+(* Helper to check field usage in record construction *)
+let check_field_usage field_name value content =
+  let usage_re =
+    Re.(compile (seq [ str field_name; rep any; str "="; rep any; str value ]))
+  in
+  Re.execp usage_re content
+
 let test_unused_field_removal () =
   let content =
     {|
@@ -55,22 +78,11 @@ let make name age = { name; age; address = "unused" }
       Sys.remove temp_file;
       Printf.printf "Content after removal:\n%s\n" new_content;
       (* Check that the field was removed from the type definition *)
-      let address_field_re =
-        Re.(
-          compile
-            (seq [ str "address"; rep any; str ":"; rep any; str "string" ]))
-      in
-      let has_address_field = Re.execp address_field_re new_content in
       check bool "field removed from type (replaced with spaces)" false
-        has_address_field;
+        (check_field_in_type "address" new_content);
       (* The field usage in record construction should still be there *)
-      let address_usage_re =
-        Re.(
-          compile
-            (seq [ str "address"; rep any; str "="; rep any; str "\"unused\"" ]))
-      in
-      let has_address_usage = Re.execp address_usage_re new_content in
-      check bool "field usage still present" true has_address_usage
+      check bool "field usage still present" true
+        (check_field_usage "address" "\"unused\"" new_content)
 
 let test_field_removal_preserves_other_fields () =
   let content =
