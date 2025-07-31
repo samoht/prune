@@ -19,12 +19,12 @@ let contains s sub =
   search 0
 
 (* Helper to create a temporary test file *)
-let create_temp_file content =
-  let temp_file = Filename.temp_file "test_comments" ".mli" in
-  let oc = open_out temp_file in
+let temp_file content =
+  let file = Filename.temp_file "test_comments" ".mli" in
+  let oc = open_out file in
   output_string oc content;
   close_out oc;
-  temp_file
+  file
 
 (* Test the trailing comment detection logic through actual removal *)
 let test_trailing_comment_blank_line () =
@@ -39,7 +39,7 @@ let test_trailing_comment_blank_line () =
 val bar : string -> string|}
   in
 
-  let temp_file = create_temp_file content in
+  let temp_file = temp_file content in
 
   (* Create a warning for foo to test comment removal *)
   let warning : warning_info =
@@ -86,7 +86,7 @@ val compute : t -> t
 (** This doc comment should NOT be removed because compute is not being removed *)|}
   in
 
-  let temp_file = create_temp_file content in
+  let temp_file = temp_file content in
 
   (* Create a warning only for the unused type *)
   let warning : warning_info =

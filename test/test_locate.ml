@@ -2,17 +2,17 @@
 open Alcotest
 open Prune
 
-let create_temp_file content =
-  let temp_file = Filename.temp_file "prune_test" ".ml" in
-  let oc = open_out temp_file in
+let temp_file content =
+  let file = Filename.temp_file "prune_test" ".ml" in
+  let oc = open_out file in
   output_string oc content;
   close_out oc;
-  temp_file
+  file
 
 let cleanup_temp_file file = if Sys.file_exists file then Sys.remove file
 
 (* Helper to create and load cache *)
-let create_test_cache file =
+let test_cache file =
   let cache = Cache.v () in
   let _ = Cache.load cache file in
   cache
@@ -75,8 +75,8 @@ let my_record = {
   field2 = "hello";
 }
 |} in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result =
     Locate.field_info ~cache ~file:temp_file ~line:3 ~col:2 ~field_name:"field1"
   in
@@ -108,8 +108,8 @@ let my_record = {
 let other_var = 20
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.enclosing_record ~cache ~file:temp_file ~line:4 ~col:5 in
   cleanup_temp_file temp_file;
   match result with
@@ -130,8 +130,8 @@ let outer = {
 }
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   (* Test finding inner record *)
   let result = Locate.enclosing_record ~cache ~file:temp_file ~line:5 ~col:8 in
   cleanup_temp_file temp_file;
@@ -146,8 +146,8 @@ let test_enclosing_record_not_found () =
 let simple_var = 42
 let another_var = "hello"
 |} in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.enclosing_record ~cache ~file:temp_file ~line:2 ~col:5 in
   cleanup_temp_file temp_file;
   match result with
@@ -165,8 +165,8 @@ let main_function () =
   Fmt.pr "Result: %d\n" result
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   match result with
   | Ok location ->
@@ -193,8 +193,8 @@ let complex_function x y =
   final
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
@@ -216,8 +216,8 @@ let broken_function x =
     (* Missing 'else' branch *)
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   (* Should still be able to parse and find the function *)
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   cleanup_temp_file temp_file;
@@ -239,8 +239,8 @@ let main_function () =
   helper_function 42
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
@@ -256,8 +256,8 @@ let test_item_with_inline_comments () =
   let content = {|
 let func x = (* inline comment *) x + 1
 |} in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   match result with
   | Ok location ->
@@ -279,8 +279,8 @@ let helper_function x = x + 1
 let another_function y = y * 2
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
@@ -308,8 +308,8 @@ type person = {
 type color = Red | Green | Blue
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:4 ~col:5 in
   match result with
   | Ok location ->
@@ -339,8 +339,8 @@ let validate_input s =
     raise (ValidationError "Empty input")
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:10 in
   match result with
   | Ok location ->
@@ -370,8 +370,8 @@ module MathUtils = struct
 end
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:4 ~col:5 in
   match result with
   | Ok location ->
@@ -395,8 +395,8 @@ module type COMPARABLE = sig
 end
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
@@ -414,8 +414,8 @@ let test_multiple_doc_comments () =
   let content = {|
 let simple_function z = z
 |} in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   match result with
   | Ok location ->
@@ -431,8 +431,8 @@ let test_item_without_docs () =
   let content = {|
 let function_without_docs y = y * 2
 |} in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   match result with
   | Ok location ->
@@ -451,8 +451,8 @@ let test_external_declaration_detection () =
 external c_function : int -> int -> int = "c_function_stub"
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:10 in
   match result with
   | Ok location ->
@@ -475,8 +475,8 @@ class counter initial_value = object
 end
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
@@ -504,8 +504,8 @@ module M = struct
 end
 |}
   in
-  let temp_file = create_temp_file content in
-  let cache = create_test_cache temp_file in
+  let temp_file = temp_file content in
+  let cache = test_cache temp_file in
   (* Test getting field info for address field in type definition *)
   let result =
     Locate.field_info ~cache ~file:temp_file ~line:6 ~col:4
@@ -542,9 +542,9 @@ let test_field_bounds_clamping () =
   address : string;  (* Last field in type definition *)
 }|}
   in
-  let file = create_temp_file content in
+  let file = temp_file content in
 
-  let cache = create_test_cache file in
+  let cache = test_cache file in
   match Locate.field_info ~cache ~file ~line:4 ~col:2 ~field_name:"address" with
   | Error e ->
       cleanup_temp_file file;

@@ -2,12 +2,12 @@
 open Alcotest
 open Prune
 
-let create_temp_file content =
-  let temp_file = Filename.temp_file "cache_test" ".txt" in
-  let oc = open_out temp_file in
+let make_temp_file content =
+  let file = Filename.temp_file "cache_test" ".txt" in
+  let oc = open_out file in
   output_string oc content;
   close_out oc;
-  temp_file
+  file
 
 let read_file file =
   let ic = open_in file in
@@ -17,7 +17,7 @@ let read_file file =
 
 let test_create_and_clear () =
   let cache = Cache.v () in
-  let temp_file = create_temp_file "line1\nline2\nline3" in
+  let temp_file = make_temp_file "line1\nline2\nline3" in
 
   (* Load file into cache *)
   (match Cache.load cache temp_file with
@@ -39,7 +39,7 @@ let test_create_and_clear () =
 let test_load_and_get_line () =
   let cache = Cache.v () in
   let content = "first line\nsecond line\nthird line" in
-  let temp_file = create_temp_file content in
+  let temp_file = make_temp_file content in
 
   (* Test get_line before loading *)
   check (option string) "before load" None (Cache.line cache temp_file 1);
@@ -66,7 +66,7 @@ let test_load_and_get_line () =
 let test_replace_line () =
   let cache = Cache.v () in
   let content = "AAA\nBBB\nCCC" in
-  let temp_file = create_temp_file content in
+  let temp_file = make_temp_file content in
 
   (* Load file *)
   (match Cache.load cache temp_file with
@@ -97,7 +97,7 @@ let test_replace_line () =
 let test_clear_line () =
   let cache = Cache.v () in
   let content = "line1\nline2\nline3" in
-  let temp_file = create_temp_file content in
+  let temp_file = make_temp_file content in
 
   (* Load file *)
   (match Cache.load cache temp_file with
@@ -125,7 +125,7 @@ let test_get_line_count () =
     (Cache.line_count cache "nonexistent.txt");
 
   let content = "one\ntwo\nthree\nfour" in
-  let temp_file = create_temp_file content in
+  let temp_file = make_temp_file content in
 
   (* Load file *)
   (match Cache.load cache temp_file with
@@ -136,7 +136,7 @@ let test_get_line_count () =
   check (option int) "line count" (Some 4) (Cache.line_count cache temp_file);
 
   (* Test empty file *)
-  let empty_file = create_temp_file "" in
+  let empty_file = make_temp_file "" in
   (match Cache.load cache empty_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
@@ -148,7 +148,7 @@ let test_get_line_count () =
 let test_write_with_changes () =
   let cache = Cache.v () in
   let content = "original1\noriginal2\noriginal3" in
-  let temp_file = create_temp_file content in
+  let temp_file = make_temp_file content in
 
   (* Load file *)
   (match Cache.load cache temp_file with
@@ -174,7 +174,7 @@ let test_write_with_changes () =
 let test_write_without_changes_fails () =
   let cache = Cache.v () in
   let content = "line1\nline2" in
-  let temp_file = create_temp_file content in
+  let temp_file = make_temp_file content in
 
   (* Load file *)
   (match Cache.load cache temp_file with
@@ -200,7 +200,7 @@ let test_write_without_changes_fails () =
 let test_no_change_tracking () =
   let cache = Cache.v () in
   let content = "AAA\nBBB\nCCC" in
-  let temp_file = create_temp_file content in
+  let temp_file = make_temp_file content in
 
   (* Load file *)
   (match Cache.load cache temp_file with
@@ -224,8 +224,8 @@ let test_no_change_tracking () =
 
 let test_multiple_files () =
   let cache = Cache.v () in
-  let file1 = create_temp_file "file1_line1\nfile1_line2" in
-  let file2 = create_temp_file "file2_line1\nfile2_line2" in
+  let file1 = make_temp_file "file1_line1\nfile1_line2" in
+  let file2 = make_temp_file "file2_line1\nfile2_line2" in
 
   (* Load both files *)
   (match Cache.load cache file1 with

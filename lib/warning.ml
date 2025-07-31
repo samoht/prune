@@ -148,7 +148,7 @@ let type_of_number = function
   | "37" -> Types.Unused_constructor
   | "38" -> Types.Unused_exception
   | "69" -> Types.Unused_field
-  | n -> failwith (Fmt.str "Unexpected warning number: %s" n)
+  | n -> Fmt.failwith "Unexpected warning number: %s" n
 
 let parse_warning_name line =
   (* Parse name and type from warning messages *)
@@ -200,7 +200,7 @@ let parse_warning_name line =
   with Not_found -> None
 
 (* Create warning info from parsed components *)
-let warning_info location name warning_type =
+let v location name warning_type =
   {
     Types.location;
     name;
@@ -260,7 +260,7 @@ let process_signature_line line rest =
       let next_lines = next_lines rest in
       match mli_location next_lines with
       | Some location ->
-          let warning = warning_info location name Types.Signature_mismatch in
+          let warning = v location name Types.Signature_mismatch in
           [ warning ]
       | None -> [])
 
@@ -305,7 +305,7 @@ let parse_all_from_lines lines =
             in
             match find_location (idx - 1) with
             | Some location ->
-                let warning = warning_info location name warning_type in
+                let warning = v location name warning_type in
                 find_warnings (warning :: acc) rest
             | None ->
                 Log.debug (fun m ->
@@ -356,9 +356,7 @@ let parse_unbound_field_error lines =
               let prev_line = List.nth lines (i - 1) in
               match parse_warning_line prev_line with
               | Some location ->
-                  let warning =
-                    warning_info location field_name Types.Unbound_field
-                  in
+                  let warning = v location field_name Types.Unbound_field in
                   Some warning
               | None -> if i > 1 then find_location (i - 1) else None
           in
