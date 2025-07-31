@@ -7,6 +7,9 @@
 type t
 (** The cache type. Handles file content caching and modification tracking. *)
 
+val pp : Format.formatter -> t -> unit
+(** [pp fmt t] pretty-prints cache information (file count and modification status) *)
+
 (** {2 Cache operations} *)
 
 val create : unit -> t

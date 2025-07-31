@@ -34,6 +34,17 @@ type t = {
   mutable total_lines_removed : int;
 }
 
+(* Pretty printer for cache *)
+let pp fmt cache =
+  let file_count = Hashtbl.length cache.files in
+  let modified_count = 
+    Hashtbl.fold (fun _ entry count ->
+      if entry.diffs <> [] then count + 1 else count
+    ) cache.files 0
+  in
+  Fmt.pf fmt "<cache: %d files, %d modified, %d lines removed>"
+    file_count modified_count cache.total_lines_removed
+
 (* Create a new cache *)
 let create () = { files = Hashtbl.create 16; total_lines_removed = 0 }
 
