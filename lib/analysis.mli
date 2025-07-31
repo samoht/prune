@@ -12,12 +12,11 @@ val find_unused_exports :
   ( (string * occurrence_info list) list * (string * occurrence_info list) list,
     error )
   result
-(** Find unused exports in the given .mli files within the project context.
-    Takes optional exclude_dirs, root_dir and a list of .mli file paths. Returns
+(** [find_unused_exports ~cache ?exclude_dirs root_dir mli_files] finds unused
+    exports in the given .mli files within the project context. Returns
     (unused_by_file, excluded_only_by_file) where:
     - unused_by_file: symbols that are completely unused
-    - excluded_only_by_file: symbols that are only used in excluded directories
-*)
+    - excluded_only_by_file: symbols that are only used in excluded directories. *)
 
 (** {2 Functions for other analysis tools} *)
 
@@ -27,7 +26,8 @@ val get_all_symbol_occurrences :
   string ->
   string list ->
   (occurrence_info list, error) result
-(** Get occurrence information for all symbols in the given .mli files. Unlike
+(** [get_all_symbol_occurrences ~cache ?exclude_dirs root_dir mli_files] gets
+    occurrence information for all symbols in the given .mli files. Unlike
     find_unused_exports, this returns all symbols regardless of usage. *)
 
 (** {2 Internal functions exposed for testing} *)

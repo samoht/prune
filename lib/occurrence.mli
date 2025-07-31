@@ -9,4 +9,4 @@ val check_bulk :
   symbol_info list ->
   occurrence_info list
 (** [check_bulk ~cache exclude_dirs root_dir symbols] checks occurrences for a
-    list of symbols with progress display *)
+    list of symbols with progress display. *)
