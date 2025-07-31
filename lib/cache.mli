@@ -8,7 +8,7 @@ type t
 (** The cache type. Handles file content caching and modification tracking. *)
 
 val pp : Format.formatter -> t -> unit
-(** [pp fmt t] pretty-prints cache information (file count and modification status) *)
+(** [pp fmt t] pretty-prints cache information (file count and modification status). *)
 
 (** {2 Cache operations} *)
 
@@ -47,11 +47,11 @@ val has_changes : t -> string -> bool
 
 val count_lines_removed : t -> int
 (** [count_lines_removed cache] returns the total number of lines that were
-    cleared across all files *)
+    cleared across all files. *)
 
 val is_file_empty : t -> string -> bool
 (** [is_file_empty cache file] returns true if the file contains only blank
-    lines *)
+    lines. *)
 
 (** {2 AST caching} *)
 
