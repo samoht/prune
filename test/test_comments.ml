@@ -56,14 +56,14 @@ val bar : string -> string|}
   | Ok _ -> ()
   | Error e ->
       Sys.remove temp_file;
-      fail (Format.asprintf "Removal failed: %a" pp_error e));
+      fail (Fmt.str "Removal failed: %a" pp_error e));
 
   (* Check what was removed *)
   let new_content = read_file temp_file in
   Sys.remove temp_file;
 
   (* Print the content for debugging *)
-  Printf.printf "\nNew content:\n%s\n" new_content;
+  Fmt.pr "\nNew content:\n%s\n" new_content;
 
   (* The blank line stops the trailing comment scan, so the leading comment for
      bar is NOT included in foo's removal and remains in the file *)
@@ -103,7 +103,7 @@ val compute : t -> t
   | Ok _ -> ()
   | Error e ->
       Sys.remove temp_file;
-      fail (Format.asprintf "Removal failed: %a" pp_error e));
+      fail (Fmt.str "Removal failed: %a" pp_error e));
 
   (* Check what was removed *)
   let new_content = read_file temp_file in

@@ -169,7 +169,7 @@ let helper_function x = x + 1
 
 let main_function () =
   let result = helper_function 42 in
-  Printf.printf "Result: %d\n" result
+  Fmt.pr "Result: %d\n" result
 |}
   in
   let temp_file = create_temp_file content in

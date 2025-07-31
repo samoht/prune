@@ -72,11 +72,11 @@ let make name age = { name; age; address = "unused" }
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Format.asprintf "Field removal failed: %a" Prune.pp_error e)
+      fail (Fmt.str "Field removal failed: %a" Prune.pp_error e)
   | Ok () ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
-      Printf.printf "Content after removal:\n%s\n" new_content;
+      Fmt.pr "Content after removal:\n%s\n" new_content;
       (* Check that the field was removed from the type definition *)
       check bool "field removed from type (replaced with spaces)" false
         (check_field_in_type "address" new_content);
@@ -115,7 +115,7 @@ type config = {
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Format.asprintf "Field removal failed: %a" Prune.pp_error e)
+      fail (Fmt.str "Field removal failed: %a" Prune.pp_error e)
   | Ok () ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
@@ -170,16 +170,16 @@ end|}
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Format.asprintf "Field removal failed: %a" Prune.pp_error e)
+      fail (Fmt.str "Field removal failed: %a" Prune.pp_error e)
   | Ok () ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
-      Printf.printf "Content after removal:\n%s\n" new_content;
+      Fmt.pr "Content after removal:\n%s\n" new_content;
       (* Check exact line 5 to see what happened *)
       let lines = String.split_on_char '\n' new_content in
       let line5 = List.nth lines 4 in
       (* 0-indexed *)
-      Printf.printf "Line 5 after removal: '%s'\n" line5;
+      Fmt.pr "Line 5 after removal: '%s'\n" line5;
       (* The field definition should be replaced with spaces *)
       let address_re = Re.(compile (str "address")) in
       check bool "address field text removed" false (Re.execp address_re line5)

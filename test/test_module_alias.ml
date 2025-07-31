@@ -29,9 +29,7 @@ let test_module_name_pattern () =
           Re.Group.offset m 0 = (0, String.length input)
         with Not_found -> false
       in
-      Alcotest.(check bool)
-        (Printf.sprintf "module name: %s" input)
-        expected matches)
+      Alcotest.(check bool) (Fmt.str "module name: %s" input) expected matches)
     test_cases
 
 (* Test whitespace patterns *)
@@ -85,7 +83,7 @@ let test_signature_mismatch_parsing () =
         with Not_found -> None
       in
       Alcotest.(check (option string))
-        (Printf.sprintf "signature mismatch: %s" input)
+        (Fmt.str "signature mismatch: %s" input)
         expected result)
     test_cases
 

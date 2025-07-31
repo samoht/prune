@@ -110,7 +110,7 @@ type unused_t = float|}
       let symbols = create_unused_symbols mli_file in
       let cache = Cache.v () in
       match remove_unused_exports ~cache root_dir mli_file symbols with
-      | Error e -> fail (Format.asprintf "Unexpected error: %a" pp_error e)
+      | Error e -> fail (Fmt.str "Unexpected error: %a" pp_error e)
       | Ok () ->
           (* Read the modified file *)
           let ic = open_in mli_file in

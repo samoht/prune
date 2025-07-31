@@ -252,33 +252,33 @@ let sample_mli =
   let doc = "Sample .mli file to test merlin occurrences" in
   Arg.(value & pos 0 (some string) None & info [] ~docv:"MLI_FILE" ~doc)
 
+(* Man pages *)
+let clean_man_pages =
+  [
+    `S Manpage.s_description;
+    `P "$(tname) analyzes OCaml .mli interface files to find unused exports.";
+    `P "It can analyze an entire dune project (default) or specific .mli files.";
+    `S Manpage.s_examples;
+    `P "Analyze entire project:";
+    `Pre "  $(mname) clean --dry-run";
+    `P "Remove unused code iteratively (force mode):";
+    `Pre "  $(mname) clean --force";
+    `P "Analyze specific files:";
+    `Pre "  $(mname) clean lib/foo.mli lib/bar.mli --dry-run";
+    `P "Analyze specific directories:";
+    `Pre "  $(mname) clean lib/ src/ --dry-run";
+    `P "Use single-pass mode (no iterative cleanup):";
+    `Pre "  $(mname) clean --step-wise --dry-run";
+    `P "Remove unused exports from specific files without prompting:";
+    `Pre "  $(mname) clean lib/foo.mli lib/bar.mli --force";
+    `P "Exclude test directories from occurrence counting:";
+    `Pre "  $(mname) clean --exclude test --exclude tests --dry-run";
+  ]
+
 (* Subcommands *)
 let clean_cmd =
   let doc = "Find and remove unused exports in OCaml .mli files (default)" in
-  let man =
-    [
-      `S Manpage.s_description;
-      `P "$(tname) analyzes OCaml .mli interface files to find unused exports.";
-      `P
-        "It can analyze an entire dune project (default) or specific .mli \
-         files.";
-      `S Manpage.s_examples;
-      `P "Analyze entire project:";
-      `Pre "  $(mname) clean --dry-run";
-      `P "Remove unused code iteratively (force mode):";
-      `Pre "  $(mname) clean --force";
-      `P "Analyze specific files:";
-      `Pre "  $(mname) clean lib/foo.mli lib/bar.mli --dry-run";
-      `P "Analyze specific directories:";
-      `Pre "  $(mname) clean lib/ src/ --dry-run";
-      `P "Use single-pass mode (no iterative cleanup):";
-      `Pre "  $(mname) clean --step-wise --dry-run";
-      `P "Remove unused exports from specific files without prompting:";
-      `Pre "  $(mname) clean lib/foo.mli lib/bar.mli --force";
-      `P "Exclude test directories from occurrence counting:";
-      `Pre "  $(mname) clean --exclude test --exclude tests --dry-run";
-    ]
-  in
+  let man = clean_man_pages in
   let info = Cmd.info "clean" ~doc ~man in
   let term =
     let build_config dry_run force step_wise use_merlin_server json =
