@@ -59,7 +59,7 @@ let track_diff entry line_num old_content new_content =
     let new_diff = { line_num; old_content; new_content } in
     entry.diffs <- new_diff :: entry.diffs
 
-let get_or_create cache file content =
+let or_create cache file content =
   let lines_list = String.split_on_char '\n' content in
   let lines = Array.of_list lines_list in
   let entry = { lines; diffs = []; ast = None } in
@@ -74,7 +74,7 @@ let load cache file =
       match OS.File.read (Fpath.v file) with
       | Error (`Msg msg) -> Error (`Msg msg)
       | Ok content ->
-          let (_ : file_entry) = get_or_create cache file content in
+          let (_ : file_entry) = or_create cache file content in
           Ok ())
 
 (* Get a single line from cache *)

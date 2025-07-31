@@ -197,11 +197,11 @@ let check_build_artifacts root_dir =
 
 (* Test merlin on a sample file *)
 (* Create test result for merlin occurrences *)
-let make_merlin_test_result ?(details = []) passed message =
+let merlin_test_result ?(details = []) passed message =
   { check_name = "Merlin occurrences test"; passed; message; details }
 
 (* Get cache miss details for merlin test *)
-let get_cache_miss_details root_dir sample_mli =
+let cache_miss_details root_dir sample_mli =
   match check_merlin_cache_stats root_dir (Some sample_mli) with
   | Some (Some misses) when misses > 2 ->
       [
@@ -217,10 +217,10 @@ let get_cache_miss_details root_dir sample_mli =
 let process_merlin_occurrences_response root_dir sample_mli output =
   match parse_merlin_response output with
   | Some "return", _ ->
-      let details = get_cache_miss_details root_dir sample_mli in
-      make_merlin_test_result true "Merlin occurrences command works" ~details
+      let details = cache_miss_details root_dir sample_mli in
+      merlin_test_result true "Merlin occurrences command works" ~details
   | _ ->
-      make_merlin_test_result false "Merlin returned unexpected output"
+      merlin_test_result false "Merlin returned unexpected output"
         ~details:
           [ "Output: " ^ String.sub output 0 (min 200 (String.length output)) ]
 
@@ -233,20 +233,20 @@ let test_merlin_occurrences_command root_dir sample_mli =
       sample_mli sample_mli
   in
   match run_with_timeout cmd with
-  | Error _ -> make_merlin_test_result false "Failed to run merlin occurrences"
+  | Error _ -> merlin_test_result false "Failed to run merlin occurrences"
   | Ok output -> process_merlin_occurrences_response root_dir sample_mli output
 
 let test_merlin_occurrences root_dir sample_mli =
   (* Check if it's a directory *)
   match OS.Dir.exists (Fpath.v sample_mli) with
   | Ok true ->
-      make_merlin_test_result false
+      merlin_test_result false
         (Fmt.str "%s is a directory, not a file" sample_mli)
         ~details:[ "Provide a .mli file to test merlin occurrences" ]
   | _ -> (
       match OS.File.exists (Fpath.v sample_mli) with
       | Ok false | Error _ ->
-          make_merlin_test_result false
+          merlin_test_result false
             (Fmt.str "Sample file %s not found" sample_mli)
       | Ok true -> test_merlin_occurrences_command root_dir sample_mli)
 

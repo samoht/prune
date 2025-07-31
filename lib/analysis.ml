@@ -7,7 +7,7 @@ module Log = (val Logs.src_log (Logs.Src.create "prune.analysis") : Logs.LOG)
 (* {2 Symbol extraction} *)
 
 (* Helper to create a symbol with its children *)
-let rec create_symbol_with_children ~cache item =
+let rec symbol_with_children ~cache item =
   let main_symbol =
     { name = item.name; kind = item.kind; location = item.location }
   in
@@ -24,10 +24,10 @@ and outline_item_to_symbol ~cache (item : outline_item) =
   | Module -> (
       (* For modules, check if it's a module alias and skip if so *)
       match Cache.load cache item.location.file with
-      | Error _ -> create_symbol_with_children ~cache item
+      | Error _ -> symbol_with_children ~cache item
       | Ok () -> (
           match Cache.file_content cache item.location.file with
-          | None -> create_symbol_with_children ~cache item
+          | None -> symbol_with_children ~cache item
           | Some content ->
               if
                 Module_alias.is_module_alias ~cache item.location.file item.kind
@@ -37,13 +37,13 @@ and outline_item_to_symbol ~cache (item : outline_item) =
                     m "Skipping module alias: %s at %a" item.name pp_location
                       item.location);
                 [])
-              else create_symbol_with_children ~cache item))
-  | _ -> create_symbol_with_children ~cache item
+              else symbol_with_children ~cache item))
+  | _ -> symbol_with_children ~cache item
 
 (* {2 Symbol discovery} *)
 
 (* Get all exported symbols from a single .mli file *)
-let get_file_symbols ~cache root_dir file_str =
+let file_symbols ~cache root_dir file_str =
   let merlin_result = System.call_merlin root_dir file_str "outline" in
   match outline_response_of_json ~file:file_str merlin_result with
   | Error e ->
@@ -161,7 +161,7 @@ let filter_modules_with_used unused_symbols all_occurrence_data =
     unused_symbols
 
 (* Common function to get symbols and their occurrences *)
-let get_symbols_and_occurrences ~cache exclude_dirs root_dir files =
+let symbols_and_occurrences ~cache exclude_dirs root_dir files =
   if List.length files > 0 then
     Log.info (fun m -> m "Analyzing %d files for symbols" (List.length files));
 
@@ -183,7 +183,7 @@ let get_symbols_and_occurrences ~cache exclude_dirs root_dir files =
         Progress.update progress ~current:!processed
           (Fmt.str "Processing file: %s" display_path);
 
-        let symbols = get_file_symbols ~cache root_dir file in
+        let symbols = file_symbols ~cache root_dir file in
         symbols @ acc)
       [] files
   in
@@ -201,7 +201,7 @@ let get_symbols_and_occurrences ~cache exclude_dirs root_dir files =
 
 (* Analyze symbols from files and find unused ones *)
 (* Find symbols that appear in multiple .mli files *)
-let get_multi_mli_symbols occurrence_data =
+let multi_mli_symbols occurrence_data =
   let mli_symbols =
     List.filter
       (fun sym -> Filename.check_suffix sym.symbol.location.file ".mli")
@@ -256,13 +256,13 @@ let categorize_symbols occurrence_data =
 
 let analyze_files_for_unused ~cache exclude_dirs root_dir files =
   let _all_symbols, occurrence_data =
-    get_symbols_and_occurrences ~cache exclude_dirs root_dir files
+    symbols_and_occurrences ~cache exclude_dirs root_dir files
   in
 
   (* Post-process: if a symbol name appears in multiple .mli files, mark all as
      Used. This handles both re-exports and symbols accessible through module
      aliases. *)
-  let multi_mli_names = get_multi_mli_symbols occurrence_data in
+  let multi_mli_names = multi_mli_symbols occurrence_data in
 
   let occurrence_data_fixed =
     fix_multi_mli_symbols occurrence_data multi_mli_names
@@ -288,7 +288,7 @@ let all_symbol_occurrences ~cache ?(exclude_dirs = []) root_dir files =
   | Ok () ->
       Log.info (fun m -> m "Getting all symbol occurrences");
       let _all_symbols, occurrence_data =
-        get_symbols_and_occurrences ~cache exclude_dirs root_dir files
+        symbols_and_occurrences ~cache exclude_dirs root_dir files
       in
       Ok occurrence_data
 
