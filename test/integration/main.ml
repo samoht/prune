@@ -192,3 +192,5 @@ let suite =
       test_case "module filtering preserves modules with used contents" `Quick
         test_module_filtering;
     ] )
+
+let () = Alcotest.run "Prune integration tests" [ suite ]

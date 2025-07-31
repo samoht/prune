@@ -4,7 +4,6 @@ let () =
   Alcotest.run "Prune test suite"
     [
       Test_warning.suite;
-      Test_integration.suite;
       Test_module_alias.suite;
       Test_locate.suite;
       Test_cache.suite;

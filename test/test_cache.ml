@@ -2,7 +2,7 @@
 open Alcotest
 open Prune
 
-let make_temp_file content =
+let temp_file_fn content =
   let file = Filename.temp_file "cache_test" ".txt" in
   let oc = open_out file in
   output_string oc content;
@@ -17,105 +17,107 @@ let read_file file =
 
 let test_create_and_clear () =
   let cache = Cache.v () in
-  let temp_file = make_temp_file "line1\nline2\nline3" in
+  let make_temp_file = temp_file_fn "line1\nline2\nline3" in
 
   (* Load file into cache *)
-  (match Cache.load cache temp_file with
+  (match Cache.load cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Verify file is loaded *)
-  check (option string) "line 1" (Some "line1") (Cache.line cache temp_file 1);
-  check (option string) "line 2" (Some "line2") (Cache.line cache temp_file 2);
+  check (option string) "line 1" (Some "line1")
+    (Cache.line cache make_temp_file 1);
+  check (option string) "line 2" (Some "line2")
+    (Cache.line cache make_temp_file 2);
 
   (* Clear cache *)
   Cache.clear cache;
 
   (* Verify cache is empty *)
-  check (option string) "after clear" None (Cache.line cache temp_file 1);
+  check (option string) "after clear" None (Cache.line cache make_temp_file 1);
 
-  Sys.remove temp_file
+  Sys.remove make_temp_file
 
 let test_load_and_get_line () =
   let cache = Cache.v () in
   let content = "first line\nsecond line\nthird line" in
-  let temp_file = make_temp_file content in
+  let make_temp_file = temp_file_fn content in
 
   (* Test get_line before loading *)
-  check (option string) "before load" None (Cache.line cache temp_file 1);
+  check (option string) "before load" None (Cache.line cache make_temp_file 1);
 
   (* Load file *)
-  (match Cache.load cache temp_file with
+  (match Cache.load cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Test get_line after loading *)
   check (option string) "line 1" (Some "first line")
-    (Cache.line cache temp_file 1);
+    (Cache.line cache make_temp_file 1);
   check (option string) "line 2" (Some "second line")
-    (Cache.line cache temp_file 2);
+    (Cache.line cache make_temp_file 2);
   check (option string) "line 3" (Some "third line")
-    (Cache.line cache temp_file 3);
+    (Cache.line cache make_temp_file 3);
 
   (* Test out of bounds *)
-  check (option string) "line 0" None (Cache.line cache temp_file 0);
-  check (option string) "line 4" None (Cache.line cache temp_file 4);
+  check (option string) "line 0" None (Cache.line cache make_temp_file 0);
+  check (option string) "line 4" None (Cache.line cache make_temp_file 4);
 
-  Sys.remove temp_file
+  Sys.remove make_temp_file
 
 let test_replace_line () =
   let cache = Cache.v () in
   let content = "AAA\nBBB\nCCC" in
-  let temp_file = make_temp_file content in
+  let make_temp_file = temp_file_fn content in
 
   (* Load file *)
-  (match Cache.load cache temp_file with
+  (match Cache.load cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Replace line 2 *)
-  Cache.replace_line cache temp_file 2 "XXX";
+  Cache.replace_line cache make_temp_file 2 "XXX";
 
   (* Verify replacement *)
   check (option string) "line 1 unchanged" (Some "AAA")
-    (Cache.line cache temp_file 1);
+    (Cache.line cache make_temp_file 1);
   check (option string) "line 2 replaced" (Some "XXX")
-    (Cache.line cache temp_file 2);
+    (Cache.line cache make_temp_file 2);
   check (option string) "line 3 unchanged" (Some "CCC")
-    (Cache.line cache temp_file 3);
+    (Cache.line cache make_temp_file 3);
 
   (* Test out of bounds replace *)
-  Cache.replace_line cache temp_file 0 "invalid";
-  Cache.replace_line cache temp_file 4 "invalid";
+  Cache.replace_line cache make_temp_file 0 "invalid";
+  Cache.replace_line cache make_temp_file 4 "invalid";
 
   (* Lines should be unchanged *)
   check (option string) "after invalid replace" (Some "XXX")
-    (Cache.line cache temp_file 2);
+    (Cache.line cache make_temp_file 2);
 
-  Sys.remove temp_file
+  Sys.remove make_temp_file
 
 let test_clear_line () =
   let cache = Cache.v () in
   let content = "line1\nline2\nline3" in
-  let temp_file = make_temp_file content in
+  let make_temp_file = temp_file_fn content in
 
   (* Load file *)
-  (match Cache.load cache temp_file with
+  (match Cache.load cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Clear line 2 *)
-  Cache.clear_line cache temp_file 2;
+  Cache.clear_line cache make_temp_file 2;
 
   (* Verify clearing *)
   check (option string) "line 1 unchanged" (Some "line1")
-    (Cache.line cache temp_file 1);
+    (Cache.line cache make_temp_file 1);
   check (option string) "line 2 cleared" (Some "")
-    (Cache.line cache temp_file 2);
+    (Cache.line cache make_temp_file 2);
   check (option string) "line 3 unchanged" (Some "line3")
-    (Cache.line cache temp_file 3);
+    (Cache.line cache make_temp_file 3);
 
-  Sys.remove temp_file
+  Sys.remove make_temp_file
 
 let test_get_line_count () =
   let cache = Cache.v () in
@@ -125,66 +127,67 @@ let test_get_line_count () =
     (Cache.line_count cache "nonexistent.txt");
 
   let content = "one\ntwo\nthree\nfour" in
-  let temp_file = make_temp_file content in
+  let make_temp_file = temp_file_fn content in
 
   (* Load file *)
-  (match Cache.load cache temp_file with
+  (match Cache.load cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Check line count *)
-  check (option int) "line count" (Some 4) (Cache.line_count cache temp_file);
+  check (option int) "line count" (Some 4)
+    (Cache.line_count cache make_temp_file);
 
   (* Test empty file *)
-  let empty_file = make_temp_file "" in
+  let empty_file = temp_file_fn "" in
   (match Cache.load cache empty_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
   check (option int) "empty file" (Some 1) (Cache.line_count cache empty_file);
 
-  Sys.remove temp_file;
+  Sys.remove make_temp_file;
   Sys.remove empty_file
 
 let test_write_with_changes () =
   let cache = Cache.v () in
   let content = "original1\noriginal2\noriginal3" in
-  let temp_file = make_temp_file content in
+  let make_temp_file = temp_file_fn content in
 
   (* Load file *)
-  (match Cache.load cache temp_file with
+  (match Cache.load cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Make changes *)
-  Cache.replace_line cache temp_file 1 "modified1";
-  Cache.clear_line cache temp_file 2;
-  Cache.replace_line cache temp_file 3 "modified3";
+  Cache.replace_line cache make_temp_file 1 "modified1";
+  Cache.clear_line cache make_temp_file 2;
+  Cache.replace_line cache make_temp_file 3 "modified3";
 
   (* Write to disk *)
-  (match Cache.write cache temp_file with
+  (match Cache.write cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Read file and verify *)
-  let new_content = read_file temp_file in
+  let new_content = read_file make_temp_file in
   check string "written content" "modified1\n\nmodified3" new_content;
 
-  Sys.remove temp_file
+  Sys.remove make_temp_file
 
 let test_write_without_changes_fails () =
   let cache = Cache.v () in
   let content = "line1\nline2" in
-  let temp_file = make_temp_file content in
+  let make_temp_file = temp_file_fn content in
 
   (* Load file *)
-  (match Cache.load cache temp_file with
+  (match Cache.load cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Try to write without making changes - should fail *)
   let write_result =
     try
-      let _ = Cache.write cache temp_file in
+      let _ = Cache.write cache make_temp_file in
       false
     with Failure msg ->
       (* Check the error message *)
@@ -195,37 +198,37 @@ let test_write_without_changes_fails () =
 
   check bool "write without changes fails" true write_result;
 
-  Sys.remove temp_file
+  Sys.remove make_temp_file
 
 let test_no_change_tracking () =
   let cache = Cache.v () in
   let content = "AAA\nBBB\nCCC" in
-  let temp_file = make_temp_file content in
+  let make_temp_file = temp_file_fn content in
 
   (* Load file *)
-  (match Cache.load cache temp_file with
+  (match Cache.load cache make_temp_file with
   | Ok () -> ()
   | Error (`Msg msg) -> fail msg);
 
   (* Replace with same content - should not track as diff *)
-  Cache.replace_line cache temp_file 2 "BBB";
+  Cache.replace_line cache make_temp_file 2 "BBB";
 
   (* Try to write - should fail since no actual changes *)
   let write_result =
     try
-      let _ = Cache.write cache temp_file in
+      let _ = Cache.write cache make_temp_file in
       false
     with Failure _ -> true
   in
 
   check bool "write with no-op change fails" true write_result;
 
-  Sys.remove temp_file
+  Sys.remove make_temp_file
 
 let test_multiple_files () =
   let cache = Cache.v () in
-  let file1 = make_temp_file "file1_line1\nfile1_line2" in
-  let file2 = make_temp_file "file2_line1\nfile2_line2" in
+  let file1 = temp_file_fn "file1_line1\nfile1_line2" in
+  let file2 = temp_file_fn "file2_line1\nfile2_line2" in
 
   (* Load both files *)
   (match Cache.load cache file1 with
