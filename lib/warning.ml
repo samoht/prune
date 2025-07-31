@@ -141,7 +141,7 @@ let extract_module_name warning_num raw_name =
   | _ -> raw_name
 
 (* Helper to get warning type from number *)
-let warning_type_of_number = function
+let type_of_number = function
   | "32" -> Types.Unused_value
   | "33" -> Types.Unused_open
   | "34" -> Types.Unused_type
@@ -193,7 +193,7 @@ let parse_warning_name line =
         if Re.execp (Re.compile (Re.str "is never mutated")) line then
           Types.Unnecessary_mutable
         else Types.Unused_field
-      else warning_type_of_number warning_num
+      else type_of_number warning_num
     in
 
     Some (name, warning_type)

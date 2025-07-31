@@ -11,7 +11,7 @@ let read_file file =
 
 (* Test the trailing comment detection logic through actual removal *)
 let test_trailing_comment_stops_at_blank_line () =
-  let cache = Cache.create () in
+  let cache = Cache.v () in
 
   (* Create test content with comments separated by blank lines *)
   let content =
@@ -69,7 +69,7 @@ val bar : string -> string|}
     (contains new_content "val bar")
 
 let test_leading_comment_not_removed_for_used_item () =
-  let cache = Cache.create () in
+  let cache = Cache.v () in
 
   (* Create test content similar to the real-world example *)
   let content =

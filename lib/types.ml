@@ -272,7 +272,7 @@ let empty_context = { last_build_result = None; previous_errors = [] }
 let update_build_result ctx result =
   { ctx with last_build_result = Some result }
 
-let get_last_build_result ctx = ctx.last_build_result
+let find_last_build_result ctx = ctx.last_build_result
 
 (* Build error classification *)
 type build_error_type =

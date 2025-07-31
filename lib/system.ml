@@ -11,8 +11,7 @@ let err fmt = Fmt.kstr (fun e -> Error (`Msg e)) fmt
 let err_no_dune_project root_dir =
   err "No dune-project file found in %s" root_dir
 
-let err_version_parse version =
-  err "Could not parse OCaml version: %s" version
+let err_version_parse version = err "Could not parse OCaml version: %s" version
 
 (* {2 TTY and environment detection} *)
 
@@ -22,7 +21,7 @@ let is_tty () = try Unix.isatty Unix.stdout with Unix.Unix_error _ -> false
 (* {2 Dune version checking} *)
 
 (* Get dune version *)
-let get_dune_version () =
+let find_dune_version () =
   match OS.Cmd.run_out Cmd.(v "dune" % "--version") |> OS.Cmd.out_string with
   | Ok (version_str, _) -> Some (String.trim version_str)
   | Error _ -> None
@@ -33,7 +32,7 @@ let should_skip_dune_operations =
     (match Sys.getenv_opt "INSIDE_DUNE" with
     | None -> false
     | Some _ -> (
-        match get_dune_version () with
+        match find_dune_version () with
         | Some "3.19.0" -> true (* Only skip for problematic version *)
         | Some version ->
             Log.debug (fun m ->
@@ -50,7 +49,7 @@ let should_skip_dune_operations =
 (* {2 OCaml version checking} *)
 
 (* Get OCaml compiler version *)
-let get_ocaml_version () =
+let find_ocaml_version () =
   match OS.Cmd.run_out Cmd.(v "ocaml" % "-version") |> OS.Cmd.out_string with
   | Ok (version_str, _) -> (
       (* OCaml version output format: "The OCaml toplevel, version X.Y.Z" *)
@@ -87,7 +86,7 @@ let parse_version version_str =
 
 (* Check if OCaml version meets minimum requirements *)
 let check_ocaml_version () =
-  match get_ocaml_version () with
+  match find_ocaml_version () with
   | None -> Error (`Msg "Could not determine OCaml compiler version")
   | Some version_str -> (
       match parse_version version_str with
@@ -298,7 +297,7 @@ let build_project_and_index root_dir ctx =
     Ok ())
   else
     let ctx, _warnings = run_single_build root_dir ctx in
-    match Types.get_last_build_result ctx with
+    match Types.find_last_build_result ctx with
     | Some result when result.success ->
         Log.debug (fun m -> m "Build completed successfully");
         Ok ()
@@ -336,7 +335,7 @@ let create_output_excerpt result =
   else result.Types.output
 
 let classify_build_error ctx =
-  match Types.get_last_build_result ctx with
+  match Types.find_last_build_result ctx with
   | None -> Types.Other_errors "No build result available"
   | Some result when result.success -> Types.No_error
   | Some result ->
@@ -370,7 +369,7 @@ let count_all_errors output =
 (* Helper to display build error and exit *)
 let display_failure_and_exit ctx =
   let total_error_count =
-    match Types.get_last_build_result ctx with
+    match Types.find_last_build_result ctx with
     | Some result -> count_all_errors result.output
     | None -> 0
   in
@@ -382,7 +381,7 @@ let display_failure_and_exit ctx =
     (if total_error_count = 1 then "error" else "errors");
 
   let pp_build_error ppf ctx =
-    match Types.get_last_build_result ctx with
+    match Types.find_last_build_result ctx with
     | None -> Fmt.pf ppf "No build output available"
     | Some result -> Fmt.pf ppf "%s" result.output
   in
@@ -390,7 +389,7 @@ let display_failure_and_exit ctx =
 
   (* Exit with build exit code *)
   let exit_code =
-    match Types.get_last_build_result ctx with
+    match Types.find_last_build_result ctx with
     | Some result -> result.exit_code
     | None -> 1
   in

@@ -8,12 +8,13 @@ type t
 (** The cache type. Handles file content caching and modification tracking. *)
 
 val pp : Format.formatter -> t -> unit
-(** [pp fmt t] pretty-prints cache information (file count and modification status). *)
+(** [pp fmt t] pretty-prints cache information (file count and modification
+    status). *)
 
 (** {2 Cache operations} *)
 
-val create : unit -> t
-(** [create ()] creates a new empty cache. *)
+val v : unit -> t
+(** [v ()] creates a new empty cache. *)
 
 val clear : t -> unit
 (** [clear cache] removes all entries from the cache. *)
@@ -23,7 +24,7 @@ val clear : t -> unit
 val load : t -> string -> (unit, [ `Msg of string ]) result
 (** [load cache file] loads a file into the cache if not already present. *)
 
-val get_line : t -> string -> int -> string option
+val find_line : t -> string -> int -> string option
 (** [get_line cache file line_num] returns line [line_num] (1-indexed) from
     [file]. Returns [None] if the file is not loaded or line number is out of
     bounds. *)
@@ -37,7 +38,7 @@ val clear_line : t -> string -> int -> unit
 (** [clear_line cache file line_num] replaces line [line_num] with an empty
     string. *)
 
-val get_line_count : t -> string -> int option
+val find_line_count : t -> string -> int option
 (** [get_line_count cache file] returns the number of lines in [file], or [None]
     if the file is not loaded. *)
 
@@ -66,7 +67,7 @@ val get_ast : t -> string -> (ast_entry, [ `Msg of string ]) result
 
 (** {2 File content access} *)
 
-val get_file_content : t -> string -> string option
+val find_file_content : t -> string -> string option
 (** [get_file_content cache file] returns the current content of [file] from
     cache as a single string. Returns [None] if the file is not loaded. *)
 

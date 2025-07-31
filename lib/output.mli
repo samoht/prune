@@ -1,8 +1,8 @@
 (** Output formatting and display module *)
 
-type output_mode = Normal | Quiet | Verbose | Json
+type mode = Normal | Quiet | Verbose | Json
 
-val set_mode : output_mode -> unit
+val set_mode : mode -> unit
 (** [set_mode mode] sets the output mode. *)
 
 (** {2 Structured output} *)

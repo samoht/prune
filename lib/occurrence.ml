@@ -4,7 +4,7 @@ open Types
 module Log = (val Logs.src_log (Logs.Src.create "prune.occurrence") : Logs.LOG)
 
 (* Find the column position of an identifier in a type declaration *)
-let find_type_identifier_column line_content start_col =
+let get_type_identifier_column line_content start_col =
   (* After "type", skip whitespace and type parameters to find the identifier *)
   let len = String.length line_content in
   let rec skip_whitespace i =
@@ -61,9 +61,9 @@ let get_identifier_column ~cache (symbol : symbol_info) =
     | Type -> (
         (* For types, we need to handle type parameters *)
         match
-          Cache.get_line cache symbol.location.file symbol.location.start_line
+          Cache.find_line cache symbol.location.file symbol.location.start_line
         with
-        | Some line_content -> find_type_identifier_column line_content col
+        | Some line_content -> get_type_identifier_column line_content col
         | None -> col + 5 (* Fallback to simple offset *))
     | Module -> col + 7 (* "module " = 7 chars *)
     | Constructor -> col + 10 (* "exception " = 10 chars *)
@@ -172,7 +172,7 @@ let get_module_path file =
   Filename.concat dir base
 
 (* Count occurrences by location type *)
-type occurrence_counts = {
+type counts = {
   in_defining_mli : int;
   in_defining_ml : int;
   external_uses : location list;
@@ -352,7 +352,7 @@ let check_bulk ~cache exclude_dirs root_dir (symbols : symbol_info list) =
   if total > 0 then
     Log.info (fun m -> m "Checking occurrences for %d symbols" total);
 
-  let progress = Progress.create ~total in
+  let progress = Progress.v ~total in
   let results =
     List.map
       (fun (symbol : symbol_info) ->

@@ -13,7 +13,7 @@ let cleanup_temp_file file = if Sys.file_exists file then Sys.remove file
 
 (* Helper to create and load cache *)
 let create_test_cache file =
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let _ = Cache.load cache file in
   cache
 

@@ -2,10 +2,9 @@
 
 type t = { internal : Output.progress; total : int }
 
-let pp fmt progress =
-  Fmt.pf fmt "<progress: %d total>" progress.total
+let pp fmt progress = Fmt.pf fmt "<progress: %d total>" progress.total
 
-let create ~total =
+let v ~total =
   let internal =
     if total > 0 then Output.create_progress ~total ()
     else Output.create_progress ()

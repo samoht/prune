@@ -273,7 +273,7 @@ let check_dune_available () =
 let check_ocaml_version () =
   match System.check_ocaml_version () with
   | Ok () -> (
-      match System.get_ocaml_version () with
+      match System.find_ocaml_version () with
       | Some version ->
           {
             check_name = "OCaml compiler version";

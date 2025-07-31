@@ -15,7 +15,7 @@ module Output = Output
 let err fmt = Fmt.kstr (fun e -> Error (`Msg e)) fmt
 
 let pp_build_error ppf ctx =
-  match get_last_build_result ctx with
+  match find_last_build_result ctx with
   | None -> Fmt.pf ppf "No build output available"
   | Some result -> Fmt.pf ppf "%s" result.output
 
@@ -192,14 +192,14 @@ let process_unused_exports ~cache ~yes ~iteration root_dir all_removable =
     | Ok () -> Ok count
 
 (* Find and remove unused exports from .mli files *)
-let find_and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir
+let get_and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir
     mli_files =
   (* Build first to ensure accurate usage information *)
   match System.build_project_and_index root_dir empty_context with
   | Error (`Build_failed _) ->
       Ok 0 (* Continue if build fails - we may be able to fix it *)
   | Ok () -> (
-      match find_unused_exports ~cache ~exclude_dirs root_dir mli_files with
+      match get_unused_exports ~cache ~exclude_dirs root_dir mli_files with
       | Error e -> Error e
       | Ok (unused_by_file, excluded_only_by_file) ->
           let all_removable = unused_by_file @ excluded_only_by_file in
@@ -284,7 +284,7 @@ let iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files =
 
     (* Remove unused exports *)
     match
-      find_and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir
+      get_and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir
         mli_files
     with
     | Error (`Msg "Cancelled by user") -> Error (`Msg "Cancelled by user")
@@ -308,7 +308,7 @@ type mode = [ `Dry_run | `Single_pass | `Iterative ]
 (* Handle dry run mode *)
 let analyze_dry_run ~cache ~exclude_dirs root_dir mli_files =
   with_built_project root_dir (fun _ctx ->
-      find_unused_exports ~cache ~exclude_dirs root_dir mli_files
+      get_unused_exports ~cache ~exclude_dirs root_dir mli_files
       >>= fun (unused_by_file, excluded_only_by_file) ->
       match (unused_by_file, excluded_only_by_file) with
       | [], [] ->
@@ -333,7 +333,7 @@ let analyze_dry_run ~cache ~exclude_dirs root_dir mli_files =
 (* Handle single pass mode *)
 let analyze_single_pass ~cache ~yes ~exclude_dirs root_dir mli_files =
   with_built_project root_dir (fun _ctx ->
-      find_unused_exports ~cache ~exclude_dirs root_dir mli_files
+      get_unused_exports ~cache ~exclude_dirs root_dir mli_files
       >>= fun (unused_by_file, excluded_only_by_file) ->
       (* Combine unused and excluded-only exports for removal *)
       let all_removable = unused_by_file @ excluded_only_by_file in
@@ -373,7 +373,7 @@ let analyze_single_pass ~cache ~yes ~exclude_dirs root_dir mli_files =
             Ok empty_stats))
 
 let analyze ?(yes = false) ?(exclude_dirs = []) mode root_dir mli_files =
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result =
     match mode with
     | `Dry_run -> analyze_dry_run ~cache ~exclude_dirs root_dir mli_files

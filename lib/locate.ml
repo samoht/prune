@@ -185,7 +185,7 @@ let get_type_keyword_loc file item =
 (* "type" *)
 
 (* Get equals location for type definition *)
-let get_equals_loc file td =
+let find_equals_loc file td =
   match (td.ptype_kind, td.ptype_manifest) with
   | Ptype_abstract, Some _ | Ptype_record _, _ | Ptype_variant _, _ ->
       let name_loc = location_of_ppxlib_location file td.ptype_name.loc in
@@ -206,7 +206,7 @@ let get_type_kind td =
 (* Process type declaration and create type_def_info *)
 let process_type_decl file item td loc =
   let type_keyword_loc = get_type_keyword_loc file item in
-  let equals_loc = get_equals_loc file td in
+  let equals_loc = find_equals_loc file td in
   let kind = get_type_kind td in
   {
     type_name = td.ptype_name.txt;
@@ -243,7 +243,7 @@ let find_type_definition file ast ~line ~col =
 
 (* Structure/signature item bounds *)
 
-let get_structure_item_bounds file ast ~line ~col =
+let find_structure_item_bounds file ast ~line ~col =
   List.find_map
     (fun item ->
       let loc = location_of_ppxlib_location file item.pstr_loc in
@@ -274,9 +274,9 @@ let rec find_value_in_module file module_type ~line ~col =
         items
   | _ -> None
 
-let get_signature_item_bounds file ast ~line ~col =
+let find_signature_item_bounds file ast ~line ~col =
   Log.debug (fun m ->
-      m "get_signature_item_bounds: looking for item at %s:%d:%d" file line col);
+      m "find_signature_item_bounds: looking for item at %s:%d:%d" file line col);
   List.find_map
     (fun item ->
       let loc = location_of_ppxlib_location file item.psig_loc in
@@ -344,7 +344,7 @@ let get_item_with_docs ~cache ~file ~line ~col =
     match get_interface_ast ~cache file with
     | Error e -> Error e
     | Ok ast -> (
-        match get_signature_item_bounds file ast ~line ~col with
+        match find_signature_item_bounds file ast ~line ~col with
         | None -> err_no_sig_item
         | Some bounds ->
             (* Extend with doc comments if needed *)
@@ -353,12 +353,12 @@ let get_item_with_docs ~cache ~file ~line ~col =
     match get_ast ~cache file with
     | Error e -> Error e
     | Ok ast -> (
-        match get_structure_item_bounds file ast ~line ~col with
+        match find_structure_item_bounds file ast ~line ~col with
         | None -> err_no_struct_item
         | Some bounds ->
             Ok (Comments.extend_location_with_comments cache file bounds))
 
-let find_value_binding ~cache ~file ~line ~col =
+let get_value_binding ~cache ~file ~line ~col =
   match get_ast ~cache file with
   | Error e -> Error e
   | Ok ast -> (

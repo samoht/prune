@@ -40,7 +40,7 @@ let make name age = { name; age; address = "unused" }
   in
 
   (* Test removing the unused field *)
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result =
     Removal.remove_unused_exports ~cache "." temp_file
       [ { name = "address"; kind = Field; location = warning.location } ]
@@ -94,7 +94,7 @@ type config = {
     }
   in
 
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result =
     Removal.remove_unused_exports ~cache "." temp_file
       [ { name = "debug"; kind = Field; location = warning.location } ]
@@ -149,7 +149,7 @@ end|}
     }
   in
 
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result =
     Removal.remove_unused_exports ~cache "." temp_file
       [ { name = "address"; kind = Field; location = warning.location } ]

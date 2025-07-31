@@ -26,7 +26,7 @@ let warn_file_read_failed file msg =
 
 (* {1 Core removal strategy types} *)
 
-type removal_strategy =
+type strategy =
   | Line_removal of { include_comments : bool }
   | Character_removal of character_removal_type
 
@@ -36,22 +36,17 @@ and character_removal_type =
   | Open_statement (* Remove open statement *)
   | Mutable_keyword (* Remove mutable keyword from field definition *)
 
-type removal_operation = {
-  location : location;
-  strategy : removal_strategy;
-  context : removal_context;
-}
+type operation = { location : location; strategy : strategy; context : context }
+and context = { warning : warning_info; enclosing : location option }
 
-and removal_context = { warning : warning_info; enclosing : location option }
-
-type removal_result =
+type result =
   | Lines_removed of bool array (* Array of bools indicating lines to remove *)
   | Characters_replaced of (int * string) list (* (line_idx, new_content) *)
 
 (* {1 Strategy determination} *)
 
 (* Determine the removal strategy based on warning type and context *)
-let determine_removal_strategy (warning : warning_info) : removal_strategy =
+let determine_removal_strategy (warning : warning_info) : strategy =
   match warning.warning_type with
   | Unused_field -> Character_removal Field_definition
   | Unnecessary_mutable -> Character_removal Mutable_keyword
@@ -85,7 +80,7 @@ let handle_exact_bounds ~cache ~file ~line ~col include_attributes =
 
 (* Handle value binding lookup with fallback *)
 let handle_value_binding ~cache ~file ~line ~col =
-  match Locate.find_value_binding ~cache ~file ~line ~col with
+  match Locate.get_value_binding ~cache ~file ~line ~col with
   | Error (`Msg msg) -> (
       (* If we can't find a value binding, fall back to standard item detection
          but log a warning as this might indicate an issue *)
@@ -105,7 +100,7 @@ let handle_other_kinds ~cache ~file ~line ~col =
   | Error (`Msg msg) -> err_ast_bounds_failed msg
   | Ok loc -> Some loc
 
-let get_enclosing_expression _root_dir file line col ~location_precision ~kind
+let find_enclosing_expression _root_dir file line col ~location_precision ~kind
     ~name:_ ~cache ~include_attributes : location option =
   match location_precision with
   | Exact_definition | Exact_statement ->
@@ -116,8 +111,7 @@ let get_enclosing_expression _root_dir file line col ~location_precision ~kind
       | _ -> handle_other_kinds ~cache ~file ~line ~col)
   | Needs_field_usage_parsing ->
       failwith
-        "Field usage parsing should be handled in create_removal_operation, \
-         not here"
+        "Field usage parsing should be handled in create_operation, not here"
 
 (* {1 Field handling} *)
 
@@ -125,7 +119,7 @@ let get_enclosing_expression _root_dir file line col ~location_precision ~kind
 
 (* Mark lines for removal *)
 let mark_lines_for_removal cache file start_line end_line =
-  match Cache.get_line_count cache file with
+  match Cache.find_line_count cache file with
   | None -> Array.make 0 false
   | Some line_count ->
       let to_remove = Array.make line_count false in
@@ -176,7 +170,7 @@ let replace_line_range line start_col end_col =
 (* Handle single-line field removal *)
 let handle_single_line_field ~is_definition cache file loc replacements =
   let line_idx = loc.start_line - 1 in
-  match Cache.get_line cache file loc.start_line with
+  match Cache.find_line cache file loc.start_line with
   | None -> ()
   | Some line ->
       let start_col =
@@ -192,7 +186,7 @@ let handle_single_line_field ~is_definition cache file loc replacements =
 let handle_multi_line_field cache file loc replacements =
   (* Replace first line *)
   let first_line_idx = loc.start_line - 1 in
-  (match Cache.get_line cache file loc.start_line with
+  (match Cache.find_line cache file loc.start_line with
   | None -> ()
   | Some first_line ->
       let new_first =
@@ -206,7 +200,7 @@ let handle_multi_line_field cache file loc replacements =
   done;
   (* Handle last line *)
   let last_line_idx = loc.end_line - 1 in
-  match Cache.get_line cache file loc.end_line with
+  match Cache.find_line cache file loc.end_line with
   | None -> ()
   | Some last_line ->
       let new_last = replace_line_range last_line 0 loc.end_col in
@@ -241,14 +235,14 @@ let process_field_usage_removal = process_field_removal ~is_definition:false
 (* Process open statement removal *)
 let process_open_removal cache file operation =
   let line_idx = operation.location.start_line - 1 in
-  match Cache.get_line cache file operation.location.start_line with
+  match Cache.find_line cache file operation.location.start_line with
   | Some _ -> Characters_replaced [ (line_idx, "") ]
   | None -> Characters_replaced []
 
 (* Process mutable keyword removal *)
 let process_mutable_keyword_removal cache file operation =
   let line_idx = operation.location.start_line - 1 in
-  match Cache.get_line cache file operation.location.start_line with
+  match Cache.find_line cache file operation.location.start_line with
   | Some line_content -> (
       (* Find and remove the "mutable " keyword (including the space after
          it) *)
@@ -280,8 +274,7 @@ let process_character_removal root_dir file cache operation =
 (* {1 Operation creation} *)
 
 (* Create removal operation from warning *)
-let create_removal_operation root_dir file cache (warning : warning_info) :
-    removal_operation =
+let create_operation root_dir file cache (warning : warning_info) : operation =
   let strategy = determine_removal_strategy warning in
   let enclosing =
     match (warning.location_precision, strategy) with
@@ -289,7 +282,7 @@ let create_removal_operation root_dir file cache (warning : warning_info) :
         Log.debug (fun m ->
             m "Getting enclosing expression for %s (Needs_enclosing_definition)"
               warning.name);
-        get_enclosing_expression root_dir file warning.location.start_line
+        find_enclosing_expression root_dir file warning.location.start_line
           warning.location.start_col
           ~location_precision:warning.location_precision
           ~kind:(Types.symbol_kind_of_warning warning.warning_type)
@@ -326,7 +319,7 @@ let create_removal_operation root_dir file cache (warning : warning_info) :
 (* {1 Result application} *)
 
 (* Apply removal result to cache *)
-let apply_removal_result file cache result context =
+let apply_result file cache result context =
   match result with
   | Lines_removed to_remove ->
       Log.debug (fun m ->
@@ -363,7 +356,7 @@ let can_delete_empty_file file =
     true
 
 (* Process a single removal operation *)
-let process_removal_operation root_dir file cache operation =
+let process_operation root_dir file cache operation =
   match operation.strategy with
   | Line_removal _ -> process_line_removal cache file operation
   | Character_removal _ ->
@@ -383,11 +376,9 @@ let symbols_to_warnings symbols =
     symbols
 
 (* Process removal operations for loaded symbols *)
-let process_removal_operations root_dir file cache symbols =
+let process_operations root_dir file cache symbols =
   let warnings = symbols_to_warnings symbols in
-  let operations =
-    List.map (create_removal_operation root_dir file cache) warnings
-  in
+  let operations = List.map (create_operation root_dir file cache) warnings in
   List.iter
     (fun op ->
       Log.debug (fun m ->
@@ -397,8 +388,8 @@ let process_removal_operations root_dir file cache symbols =
             (match op.context.enclosing with
             | None -> "none"
             | Some enc -> Fmt.str "%d-%d" enc.start_line enc.end_line));
-      let result = process_removal_operation root_dir file cache op in
-      apply_removal_result file cache result op.context)
+      let result = process_operation root_dir file cache op in
+      apply_result file cache result op.context)
     operations
 
 (* Handle file deletion or writing after removals *)
@@ -431,7 +422,7 @@ let remove_unused_exports ~cache root_dir file (symbols : symbol_info list) =
     match Cache.load cache file with
     | Error (`Msg m) -> err_file_read file m
     | Ok () -> (
-        process_removal_operations root_dir file cache symbols;
+        process_operations root_dir file cache symbols;
         (* Only write cache if there were actual changes made *)
         match Cache.has_changes cache file with
         | false -> Ok ()
@@ -493,7 +484,7 @@ let replace_type_with_unit cache file loc =
           err_no_type_eq loc.start_line
       | Some eq_loc -> (
           (* Replace from after the equals sign to the end with " unit" *)
-          match Cache.get_line cache file eq_loc.start_line with
+          match Cache.find_line cache file eq_loc.start_line with
           | None -> ()
           | Some line ->
               let before_eq_and_eq = String.sub line 0 eq_loc.end_col in
@@ -507,7 +498,7 @@ let replace_type_with_unit cache file loc =
 (* Replace a record construction with () *)
 let replace_record_with_unit cache file loc =
   if loc.start_line = loc.end_line then
-    match Cache.get_line cache file loc.start_line with
+    match Cache.find_line cache file loc.start_line with
     | None -> ()
     | Some line ->
         let before =
@@ -521,7 +512,7 @@ let replace_record_with_unit cache file loc =
         Cache.replace_line cache file loc.start_line (before ^ "()" ^ after)
   else
     (* Multi-line record *)
-    match Cache.get_line cache file loc.start_line with
+    match Cache.find_line cache file loc.start_line with
     | None -> ()
     | Some first_line -> (
         let before =
@@ -534,7 +525,7 @@ let replace_record_with_unit cache file loc =
           Cache.clear_line cache file i
         done;
         (* Handle last line *)
-        match Cache.get_line cache file loc.end_line with
+        match Cache.find_line cache file loc.end_line with
         | None -> ()
         | Some last_line ->
             let after =
@@ -586,10 +577,8 @@ let process_field_removals ~cache ~root_dir ~file field_ops =
               (* Not removing all fields - process each field individually *)
               List.iter
                 (fun (op, _) ->
-                  let result =
-                    process_removal_operation root_dir file cache op
-                  in
-                  apply_removal_result file cache result op.context)
+                  let result = process_operation root_dir file cache op in
+                  apply_result file cache result op.context)
                 ops_for_record))
     by_record
 
@@ -614,7 +603,7 @@ let partition_field_operations operations =
   (field_def_ops, field_usage_ops, other_ops)
 
 (* Collect results and compute total *)
-let collect_removal_results results =
+let collect_results results =
   let errors =
     List.filter_map (function Error e -> Some e | Ok _ -> None) results
   in
@@ -635,7 +624,7 @@ let process_file_warnings ~cache ~root_dir ~file file_warnings =
   | Ok () -> (
       (* Create removal operations for all warnings *)
       let operations =
-        List.map (create_removal_operation root_dir file cache) file_warnings
+        List.map (create_operation root_dir file cache) file_warnings
       in
 
       (* Group field operations *)
@@ -650,8 +639,8 @@ let process_file_warnings ~cache ~root_dir ~file file_warnings =
       (* Process other operations normally *)
       List.iter
         (fun op ->
-          let result = process_removal_operation root_dir file cache op in
-          apply_removal_result file cache result op.context)
+          let result = process_operation root_dir file cache op in
+          apply_result file cache result op.context)
         other_ops;
 
       (* Check if file is now empty and should be deleted *)
@@ -683,7 +672,7 @@ let remove_warnings ~cache root_dir warnings =
   let by_file = group_warnings_by_file warnings in
   let total_files = List.length by_file in
   let processed = ref 0 in
-  let progress = Progress.create ~total:total_files in
+  let progress = Progress.v ~total:total_files in
   let results =
     List.map
       (fun (file, file_warnings) ->
@@ -701,4 +690,4 @@ let remove_warnings ~cache root_dir warnings =
   in
   Progress.clear progress;
   (* Calculate total removals *)
-  collect_removal_results results
+  collect_results results

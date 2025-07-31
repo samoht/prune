@@ -4,7 +4,7 @@ open Types
 
 (** {2 Main analysis orchestration} *)
 
-val find_unused_exports :
+val get_unused_exports :
   cache:Cache.t ->
   ?exclude_dirs:string list ->
   string ->
@@ -16,7 +16,8 @@ val find_unused_exports :
     exports in the given .mli files within the project context. Returns
     (unused_by_file, excluded_only_by_file) where:
     - unused_by_file: symbols that are completely unused
-    - excluded_only_by_file: symbols that are only used in excluded directories. *)
+    - excluded_only_by_file: symbols that are only used in excluded directories.
+*)
 
 (** {2 Functions for other analysis tools} *)
 

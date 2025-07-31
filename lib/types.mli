@@ -149,7 +149,7 @@ val pp_error : Format.formatter -> error -> unit
 val update_build_result : context -> build_result -> context
 (** Update context with a new build result *)
 
-val get_last_build_result : context -> build_result option
+val find_last_build_result : context -> build_result option
 (** Get the last build result from context *)
 
 (** Build error classification *)

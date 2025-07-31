@@ -107,7 +107,7 @@ type unused_t = float|}
         ]
       in
 
-      let cache = Cache.create () in
+      let cache = Cache.v () in
       match remove_unused_exports ~cache root_dir mli_file symbols with
       | Error e -> fail (Format.asprintf "Unexpected error: %a" pp_error e)
       | Ok () ->
@@ -145,9 +145,24 @@ let create_module_test_data () =
   in
   let occurrence_data =
     [
-      { symbol = List.nth symbols 0; occurrences = 0; locations = []; usage_class = Unused };
-      { symbol = List.nth symbols 1; occurrences = 2; locations = []; usage_class = Used };
-      { symbol = List.nth symbols 2; occurrences = 0; locations = []; usage_class = Unused };
+      {
+        symbol = List.nth symbols 0;
+        occurrences = 0;
+        locations = [];
+        usage_class = Unused;
+      };
+      {
+        symbol = List.nth symbols 1;
+        occurrences = 2;
+        locations = [];
+        usage_class = Used;
+      };
+      {
+        symbol = List.nth symbols 2;
+        occurrences = 0;
+        locations = [];
+        usage_class = Unused;
+      };
     ]
   in
   (symbols, occurrence_data)

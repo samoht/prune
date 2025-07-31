@@ -334,7 +334,7 @@ let render_html output_dir occurrences =
 
 let run ~format ~output_dir ~root_dir ~mli_files =
   (* Create cache *)
-  let cache = Cache.create () in
+  let cache = Cache.v () in
 
   if mli_files = [] then Error (`Msg "No .mli files found to analyze")
   else

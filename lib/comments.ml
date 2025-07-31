@@ -32,13 +32,13 @@ let is_comment_line line =
 let is_empty_line line = String.trim line = ""
 
 (* Find the start of comments (both doc and regular) preceding a given line *)
-let find_preceding_comment_start cache file start_line_idx =
+let get_preceding_comment_start cache file start_line_idx =
   if start_line_idx <= 0 then start_line_idx
   else
     let rec scan_backwards line_idx in_comment_block =
       if line_idx < 0 then 0
       else
-        match Cache.get_line cache file (line_idx + 1) with
+        match Cache.find_line cache file (line_idx + 1) with
         | None -> line_idx + 1
         | Some line ->
             if is_empty_line line then
@@ -54,7 +54,7 @@ let find_preceding_comment_start cache file start_line_idx =
               let rec find_multi_start idx depth =
                 if idx < 0 then 0
                 else
-                  match Cache.get_line cache file (idx + 1) with
+                  match Cache.find_line cache file (idx + 1) with
                   | None -> idx + 1
                   | Some l ->
                       let rec count_markers i starts ends =
@@ -78,10 +78,10 @@ let find_preceding_comment_start cache file start_line_idx =
     scan_backwards (start_line_idx - 1) false
 
 (* Find trailing comments after a given line *)
-let find_trailing_comment_end cache file end_line_idx =
+let get_trailing_comment_end cache file end_line_idx =
   Log.debug (fun m ->
-      m "find_trailing_comment_end: file=%s end_line_idx=%d" file end_line_idx);
-  match Cache.get_line_count cache file with
+      m "get_trailing_comment_end: file=%s end_line_idx=%d" file end_line_idx);
+  match Cache.find_line_count cache file with
   | None -> end_line_idx
   | Some max_lines ->
       if end_line_idx >= max_lines then end_line_idx
@@ -89,7 +89,7 @@ let find_trailing_comment_end cache file end_line_idx =
         let scan_forward line_idx =
           if line_idx >= max_lines then line_idx
           else
-            match Cache.get_line cache file (line_idx + 1) with
+            match Cache.find_line cache file (line_idx + 1) with
             | None ->
                 Log.debug (fun m ->
                     m "  scan_forward: no line at %d, returning %d"
@@ -111,7 +111,7 @@ let find_trailing_comment_end cache file end_line_idx =
                     let rec find_end idx =
                       if idx >= max_lines - 1 then max_lines - 1
                       else
-                        match Cache.get_line cache file (idx + 1) with
+                        match Cache.find_line cache file (idx + 1) with
                         | None -> idx
                         | Some l ->
                             if line_contains_comment_end l then idx + 1
@@ -128,11 +128,11 @@ let find_trailing_comment_end cache file end_line_idx =
 let extend_location_with_comments cache file location =
   (* Find preceding comments *)
   let start_with_comments =
-    find_preceding_comment_start cache file (location.Types.start_line - 1) + 1
+    get_preceding_comment_start cache file (location.Types.start_line - 1) + 1
   in
   (* Find trailing comments *)
   let end_with_comments =
-    find_trailing_comment_end cache file location.Types.end_line
+    get_trailing_comment_end cache file location.Types.end_line
   in
   Log.debug (fun m ->
       m "extend_location_with_comments: file=%s original %d-%d, extended %d-%d"

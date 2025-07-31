@@ -26,7 +26,7 @@ and outline_item_to_symbol ~cache (item : outline_item) =
       match Cache.load cache item.location.file with
       | Error _ -> create_symbol_with_children ~cache item
       | Ok () -> (
-          match Cache.get_file_content cache item.location.file with
+          match Cache.find_file_content cache item.location.file with
           | None -> create_symbol_with_children ~cache item
           | Some content ->
               if
@@ -169,7 +169,7 @@ let get_symbols_and_occurrences ~cache exclude_dirs root_dir files =
   let total = List.length files in
   let processed = ref 0 in
   let root_path = Fpath.v root_dir in
-  let progress = Progress.create ~total in
+  let progress = Progress.v ~total in
 
   let all_symbols =
     List.fold_left
@@ -201,7 +201,7 @@ let get_symbols_and_occurrences ~cache exclude_dirs root_dir files =
 
 (* Analyze symbols from files and find unused ones *)
 (* Find symbols that appear in multiple .mli files *)
-let find_multi_mli_symbols occurrence_data =
+let get_multi_mli_symbols occurrence_data =
   let mli_symbols =
     List.filter
       (fun sym -> Filename.check_suffix sym.symbol.location.file ".mli")
@@ -262,7 +262,7 @@ let analyze_files_for_unused ~cache exclude_dirs root_dir files =
   (* Post-process: if a symbol name appears in multiple .mli files, mark all as
      Used. This handles both re-exports and symbols accessible through module
      aliases. *)
-  let multi_mli_names = find_multi_mli_symbols occurrence_data in
+  let multi_mli_names = get_multi_mli_symbols occurrence_data in
 
   let occurrence_data_fixed =
     fix_multi_mli_symbols occurrence_data multi_mli_names
@@ -292,7 +292,7 @@ let get_all_symbol_occurrences ~cache ?(exclude_dirs = []) root_dir files =
       in
       Ok occurrence_data
 
-let find_unused_exports ~cache ?(exclude_dirs = []) root_dir files =
+let get_unused_exports ~cache ?(exclude_dirs = []) root_dir files =
   match System.validate_dune_project root_dir with
   | Error (`Msg e) -> Error (`Msg e)
   | Ok () ->

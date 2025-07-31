@@ -6,10 +6,9 @@ type t
 val pp : Format.formatter -> t -> unit
 (** [pp fmt t] pretty-prints progress information *)
 
-val create : total:int -> t
-(** [create ~total] creates a new progress indicator with a progress bar. If
-    [total] is 0 or the output is not a terminal, creates a no-op progress
-    indicator. *)
+val v : total:int -> t
+(** [v ~total] creates a new progress indicator with a progress bar. If [total]
+    is 0 or the output is not a terminal, creates a no-op progress indicator. *)
 
 val update : t -> current:int -> string -> unit
 (** [update progress ~current message] updates the progress display with the

@@ -37,16 +37,16 @@ type t = {
 (* Pretty printer for cache *)
 let pp fmt cache =
   let file_count = Hashtbl.length cache.files in
-  let modified_count = 
-    Hashtbl.fold (fun _ entry count ->
-      if entry.diffs <> [] then count + 1 else count
-    ) cache.files 0
+  let modified_count =
+    Hashtbl.fold
+      (fun _ entry count -> if entry.diffs <> [] then count + 1 else count)
+      cache.files 0
   in
-  Fmt.pf fmt "<cache: %d files, %d modified, %d lines removed>"
-    file_count modified_count cache.total_lines_removed
+  Fmt.pf fmt "<cache: %d files, %d modified, %d lines removed>" file_count
+    modified_count cache.total_lines_removed
 
 (* Create a new cache *)
-let create () = { files = Hashtbl.create 16; total_lines_removed = 0 }
+let v () = { files = Hashtbl.create 16; total_lines_removed = 0 }
 
 (* Clear all entries from cache *)
 let clear cache =
@@ -78,7 +78,7 @@ let load cache file =
           Ok ())
 
 (* Get a single line from cache *)
-let get_line cache file line_num =
+let find_line cache file line_num =
   match Hashtbl.find_opt cache.files file with
   | None -> None
   | Some entry ->
@@ -112,7 +112,7 @@ let replace_line cache file line_num new_content =
 let clear_line cache file line_num = replace_line cache file line_num ""
 
 (* Get the number of lines in a file *)
-let get_line_count cache file =
+let find_line_count cache file =
   match Hashtbl.find_opt cache.files file with
   | None -> None
   | Some entry -> Some (Array.length entry.lines)
@@ -135,7 +135,7 @@ let is_file_empty cache file =
       Array.for_all (fun line -> String.trim line = "") entry.lines
 
 (* Get the full content of a file from cache *)
-let get_file_content cache file =
+let find_file_content cache file =
   match Hashtbl.find_opt cache.files file with
   | None -> None
   | Some entry -> Some (String.concat "\n" (Array.to_list entry.lines))

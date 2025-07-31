@@ -38,7 +38,7 @@ let other = 33|}
     }
   in
 
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result = Removal.remove_warnings ~cache "." [ warning ] in
 
   match result with
@@ -76,7 +76,7 @@ let other = 33|}
     }
   in
 
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result = Removal.remove_warnings ~cache "." [ warning ] in
 
   match result with
@@ -111,7 +111,7 @@ let other = 33|}
     }
   in
 
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result = Removal.remove_warnings ~cache "." [ warning ] in
 
   match result with
@@ -146,7 +146,7 @@ let value = 42|}
     }
   in
 
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result = Removal.remove_warnings ~cache "." [ warning ] in
 
   match result with
@@ -198,7 +198,7 @@ let make name age = { name; age }|}
     ]
   in
 
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result = Removal.remove_warnings ~cache "." warnings in
 
   match result with
@@ -234,7 +234,7 @@ let other = 33|}
     }
   in
 
-  let cache = Cache.create () in
+  let cache = Cache.v () in
   let result = Removal.remove_warnings ~cache "." [ warning ] in
 
   match result with
