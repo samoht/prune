@@ -1,6 +1,5 @@
 (** Diagnostic tool for debugging merlin and build issues *)
 
-(** Run all diagnostic checks and print a report *)
 val run_diagnostics :
   string -> string option -> (unit, [ `Msg of string ]) result
 (** [run_diagnostics root_dir sample_mli] runs all diagnostic checks. [root_dir]

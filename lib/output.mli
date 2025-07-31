@@ -30,10 +30,10 @@ val create_progress : ?total:int -> unit -> progress
 (** [create_progress ?total ()] creates a progress indicator. *)
 
 val update_progress : progress -> string -> unit
-(** Update progress with a message *)
+(** [update_progress progress message] updates progress with a message. *)
 
 val set_progress_current : progress -> int -> unit
-(** Set current progress value *)
+(** [set_progress_current progress value] sets current progress value. *)
 
 val clear_progress : progress -> unit
-(** Clear the progress display *)
+(** [clear_progress progress] clears the progress display. *)

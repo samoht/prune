@@ -93,4 +93,4 @@
 open Types
 
 val parse : string -> warning_info list
-(** Parse all warning 32/34 messages from build output *)
+(** [parse output] parses all warning 32/34 messages from build output. *)
