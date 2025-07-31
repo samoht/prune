@@ -56,7 +56,7 @@ val bar : string -> string|}
   | Ok _ -> ()
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Removal failed: %a" pp_error e));
+      failf "Removal failed: %a" pp_error e);
 
   (* Check what was removed *)
   let new_content = read_file temp_file in
@@ -103,7 +103,7 @@ val compute : t -> t
   | Ok _ -> ()
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Removal failed: %a" pp_error e));
+      failf "Removal failed: %a" pp_error e);
 
   (* Check what was removed *)
   let new_content = read_file temp_file in

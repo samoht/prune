@@ -44,7 +44,7 @@ let other = 33|}
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Removal failed: %a" Prune.pp_error e)
+      failf "Removal failed: %a" Prune.pp_error e
   | Ok _ ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
@@ -82,7 +82,7 @@ let other = 33|}
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Removal failed: %a" Prune.pp_error e)
+      failf "Removal failed: %a" Prune.pp_error e
   | Ok _ ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
@@ -117,7 +117,7 @@ let other = 33|}
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Removal failed: %a" Prune.pp_error e)
+      failf "Removal failed: %a" Prune.pp_error e
   | Ok _ ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
@@ -152,7 +152,7 @@ let value = 42|}
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Removal failed: %a" Prune.pp_error e)
+      failf "Removal failed: %a" Prune.pp_error e
   | Ok _ ->
       (* Check if file was deleted (because it became empty) *)
       if Sys.file_exists temp_file then (
@@ -204,7 +204,7 @@ let make name age = { name; age }|}
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Removal failed: %a" Prune.pp_error e)
+      failf "Removal failed: %a" Prune.pp_error e
   | Ok _ ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
@@ -240,7 +240,7 @@ let other = 33|}
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Removal failed: %a" Prune.pp_error e)
+      failf "Removal failed: %a" Prune.pp_error e
   | Ok _ ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;

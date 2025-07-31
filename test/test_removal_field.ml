@@ -72,7 +72,7 @@ let make name age = { name; age; address = "unused" }
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Field removal failed: %a" Prune.pp_error e)
+      failf "Field removal failed: %a" Prune.pp_error e
   | Ok () ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
@@ -115,7 +115,7 @@ type config = {
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Field removal failed: %a" Prune.pp_error e)
+      failf "Field removal failed: %a" Prune.pp_error e
   | Ok () ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
@@ -170,7 +170,7 @@ end|}
   match result with
   | Error e ->
       Sys.remove temp_file;
-      fail (Fmt.str "Field removal failed: %a" Prune.pp_error e)
+      failf "Field removal failed: %a" Prune.pp_error e
   | Ok () ->
       let new_content = read_file temp_file in
       Sys.remove temp_file;
