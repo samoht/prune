@@ -78,8 +78,7 @@ let my_record = {
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
   let result =
-    Locate.get_field_info ~cache ~file:temp_file ~line:3 ~col:2
-      ~field_name:"field1"
+    Locate.field_info ~cache ~file:temp_file ~line:3 ~col:2 ~field_name:"field1"
   in
   match result with
   | Ok info ->
@@ -111,9 +110,7 @@ let other_var = 20
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_enclosing_record ~cache ~file:temp_file ~line:4 ~col:5
-  in
+  let result = Locate.enclosing_record ~cache ~file:temp_file ~line:4 ~col:5 in
   cleanup_temp_file temp_file;
   match result with
   | Ok location ->
@@ -136,9 +133,7 @@ let outer = {
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
   (* Test finding inner record *)
-  let result =
-    Locate.get_enclosing_record ~cache ~file:temp_file ~line:5 ~col:8
-  in
+  let result = Locate.enclosing_record ~cache ~file:temp_file ~line:5 ~col:8 in
   cleanup_temp_file temp_file;
   match result with
   | Ok location ->
@@ -153,9 +148,7 @@ let another_var = "hello"
 |} in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_enclosing_record ~cache ~file:temp_file ~line:2 ~col:5
-  in
+  let result = Locate.enclosing_record ~cache ~file:temp_file ~line:2 ~col:5 in
   cleanup_temp_file temp_file;
   match result with
   | Ok _ -> fail "Should not find record in non-record code"
@@ -174,9 +167,7 @@ let main_function () =
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:2 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   match result with
   | Ok location ->
       (* Check that we got the helper_function item with surrounding space *)
@@ -204,9 +195,7 @@ let complex_function x y =
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:3 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
       (* Check that we got the entire complex_function *)
@@ -230,9 +219,7 @@ let broken_function x =
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
   (* Should still be able to parse and find the function *)
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:2 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   cleanup_temp_file temp_file;
   match result with
   | Ok _ | Error _ ->
@@ -254,9 +241,7 @@ let main_function () =
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:3 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
       (* Should find the helper_function definition *)
@@ -273,9 +258,7 @@ let func x = (* inline comment *) x + 1
 |} in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:2 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   match result with
   | Ok location ->
       (* Should get the entire function including inline comment *)
@@ -298,9 +281,7 @@ let another_function y = y * 2
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:3 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
       let extracted_text = extract_location_text temp_file location in
@@ -329,9 +310,7 @@ type color = Red | Green | Blue
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:4 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:4 ~col:5 in
   match result with
   | Ok location ->
       let extracted_text = extract_location_text temp_file location in
@@ -362,9 +341,7 @@ let validate_input s =
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:3 ~col:10
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:10 in
   match result with
   | Ok location ->
       let extracted_text = extract_location_text temp_file location in
@@ -395,9 +372,7 @@ end
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:4 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:4 ~col:5 in
   match result with
   | Ok location ->
       let extracted_text = extract_location_text temp_file location in
@@ -422,9 +397,7 @@ end
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:3 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
       (* Should detect the entire module type *)
@@ -443,9 +416,7 @@ let simple_function z = z
 |} in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:2 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   match result with
   | Ok location ->
       (* Should find the simple function *)
@@ -462,9 +433,7 @@ let function_without_docs y = y * 2
 |} in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:2 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:5 in
   match result with
   | Ok location ->
       let extracted_text = extract_location_text temp_file location in
@@ -484,9 +453,7 @@ external c_function : int -> int -> int = "c_function_stub"
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:2 ~col:10
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:2 ~col:10 in
   match result with
   | Ok location ->
       let extracted_text = extract_location_text temp_file location in
@@ -510,9 +477,7 @@ end
   in
   let temp_file = create_temp_file content in
   let cache = create_test_cache temp_file in
-  let result =
-    Locate.get_item_with_docs ~cache ~file:temp_file ~line:3 ~col:5
-  in
+  let result = Locate.item_with_docs ~cache ~file:temp_file ~line:3 ~col:5 in
   match result with
   | Ok location ->
       let extracted_text = extract_location_text temp_file location in
@@ -543,7 +508,7 @@ end
   let cache = create_test_cache temp_file in
   (* Test getting field info for address field in type definition *)
   let result =
-    Locate.get_field_info ~cache ~file:temp_file ~line:6 ~col:4
+    Locate.field_info ~cache ~file:temp_file ~line:6 ~col:4
       ~field_name:"address"
   in
   match result with
@@ -580,9 +545,7 @@ let test_field_bounds_clamping () =
   let file = create_temp_file content in
 
   let cache = create_test_cache file in
-  match
-    Locate.get_field_info ~cache ~file ~line:4 ~col:2 ~field_name:"address"
-  with
+  match Locate.field_info ~cache ~file ~line:4 ~col:2 ~field_name:"address" with
   | Error e ->
       cleanup_temp_file file;
       fail (match e with `Msg msg -> "Failed to get field info: " ^ msg)

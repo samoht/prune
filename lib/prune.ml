@@ -14,7 +14,7 @@ module Output = Output
 let err fmt = Fmt.kstr (fun e -> Error (`Msg e)) fmt
 
 let pp_build_error ppf ctx =
-  match find_last_build_result ctx with
+  match last_build_result ctx with
   | None -> Fmt.pf ppf "No build output available"
   | Some result -> Fmt.pf ppf "%s" result.output
 
@@ -49,7 +49,7 @@ let confirm_removal () =
 (* {2 Reporting functions} *)
 
 (* Get relative path for display *)
-let get_relative_path root_dir file =
+let relative_path root_dir file =
   let root_path = Fpath.v root_dir in
   let file_path = Fpath.v file in
   match Fpath.relativize ~root:root_path file_path with
@@ -104,7 +104,7 @@ let perform_unused_exports_removal ~cache root_dir unused_by_file =
   let results =
     List.map
       (fun (file, symbols) ->
-        let relative_file = get_relative_path root_dir file in
+        let relative_file = relative_path root_dir file in
         match remove_unused_exports ~cache root_dir file symbols with
         | Ok () ->
             Fmt.pr "✓ %s@." relative_file;
@@ -191,8 +191,7 @@ let process_unused_exports ~cache ~yes ~iteration root_dir all_removable =
     | Ok () -> Ok count
 
 (* Find and remove unused exports from .mli files *)
-let get_and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir
-    mli_files =
+let and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir mli_files =
   (* Build first to ensure accurate usage information *)
   match System.build_project_and_index root_dir empty_context with
   | Error (`Build_failed _) ->
@@ -283,8 +282,7 @@ let iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files =
 
     (* Remove unused exports *)
     match
-      get_and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir
-        mli_files
+      and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir mli_files
     with
     | Error (`Msg "Cancelled by user") -> Error (`Msg "Cancelled by user")
     | Error e -> Error e

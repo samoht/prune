@@ -17,7 +17,7 @@ let with_color color s = if is_tty then color ^ s ^ reset else s
 (* Terminal width caching *)
 let terminal_width = ref None
 
-let get_terminal_width () =
+let terminal_width () =
   match !terminal_width with
   | Some w -> w
   | None ->
@@ -61,12 +61,12 @@ type progress = {
   total : int option;
 }
 
-let create_progress ?total () = { current = 0; message = ""; total }
+let progress ?total () = { current = 0; message = ""; total }
 
 let update_progress p msg =
   p.message <- msg;
   if !current_mode = Normal && is_tty then
-    let width = get_terminal_width () in
+    let width = terminal_width () in
     match p.total with
     | Some total ->
         let pct = p.current * 100 / total in
@@ -108,5 +108,5 @@ let set_progress_current p n =
 
 let clear_progress _ =
   if !current_mode = Normal && is_tty then
-    let width = get_terminal_width () in
+    let width = terminal_width () in
     Fmt.pr "\r%s\r%!" (String.make width ' ')

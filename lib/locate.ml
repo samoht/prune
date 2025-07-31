@@ -40,10 +40,10 @@ let err_no_enclosing_record = err "Could not find enclosing record"
 
 (* Basic utilities *)
 
-let rec get_longident_last = function
+let rec longident_last = function
   | Longident.Lident s -> s
   | Longident.Ldot (_, s) -> s
-  | Longident.Lapply (_, l) -> get_longident_last l
+  | Longident.Lapply (_, l) -> longident_last l
 
 let location_of_ppxlib_location file (loc : Location.t) : T.location =
   T.location file ~line:loc.loc_start.pos_lnum
@@ -53,13 +53,13 @@ let location_of_ppxlib_location file (loc : Location.t) : T.location =
 
 (* AST cache access *)
 
-let get_ast ~cache file =
+let ast_entry ~cache file =
   match Cache.ast cache file with
   | Ok (Implementation ast) -> Ok ast
   | Ok (Interface _) -> err_expected_impl file
   | Error e -> Error e
 
-let get_interface_ast ~cache file =
+let interface_ast ~cache file =
   match Cache.ast cache file with
   | Ok (Interface ast) -> Ok ast
   | Ok (Implementation _) -> err_expected_intf file
@@ -96,7 +96,7 @@ let extend_field_bounds field_loc next_item_loc is_last_field =
     T.extend field_loc ~end_line:next_item_loc.T.start_line
       ~end_col:next_item_loc.T.start_col
 
-let find_field_in_type file type_decl ~line ~col ~field_name =
+let field_in_type file type_decl ~line ~col ~field_name =
   match type_decl.ptype_kind with
   | Ptype_record label_decls ->
       let record_loc = location_of_ppxlib_location file type_decl.ptype_loc in
@@ -136,7 +136,7 @@ let find_field_in_type file type_decl ~line ~col ~field_name =
       find_with_index 0 label_decls
   | _ -> None
 
-let find_field_in_record file expr ~line ~col ~field_name =
+let field_in_record file expr ~line ~col ~field_name =
   match expr.pexp_desc with
   | Pexp_record (fields, _) ->
       let record_loc = location_of_ppxlib_location file expr.pexp_loc in
@@ -147,7 +147,7 @@ let find_field_in_record file expr ~line ~col ~field_name =
         | [] -> None
         | ((lid : Longident.t Asttypes.loc), expr) :: rest ->
             let field_loc = location_of_ppxlib_location file lid.loc in
-            let name = get_longident_last lid.txt in
+            let name = longident_last lid.txt in
             if name = field_name && location_contains field_loc ~line ~col then
               let value_loc = location_of_ppxlib_location file expr.pexp_loc in
               let full_loc = T.merge field_loc value_loc in
@@ -178,14 +178,14 @@ let find_field_in_record file expr ~line ~col ~field_name =
 (* Type definition handling *)
 
 (* Get type keyword location *)
-let get_type_keyword_loc file item =
+let type_keyword_loc file item =
   let item_loc = location_of_ppxlib_location file item.pstr_loc in
   T.extend item_loc ~end_line:item_loc.start_line
     ~end_col:(item_loc.start_col + 4)
 (* "type" *)
 
 (* Get equals location for type definition *)
-let find_equals_loc file td =
+let equals_loc file td =
   match (td.ptype_kind, td.ptype_manifest) with
   | Ptype_abstract, Some _ | Ptype_record _, _ | Ptype_variant _, _ ->
       let name_loc = location_of_ppxlib_location file td.ptype_name.loc in
@@ -196,7 +196,7 @@ let find_equals_loc file td =
   | _ -> None
 
 (* Get type definition kind *)
-let get_type_kind td =
+let type_kind td =
   match td.ptype_kind with
   | Ptype_abstract -> if td.ptype_manifest <> None then `Alias else `Abstract
   | Ptype_record _ -> `Record
@@ -205,9 +205,9 @@ let get_type_kind td =
 
 (* Process type declaration and create type_def_info *)
 let process_type_decl file item td loc =
-  let type_keyword_loc = get_type_keyword_loc file item in
-  let equals_loc = find_equals_loc file td in
-  let kind = get_type_kind td in
+  let type_keyword_loc = type_keyword_loc file item in
+  let equals_loc = equals_loc file td in
+  let kind = type_kind td in
   {
     type_name = td.ptype_name.txt;
     type_keyword_loc;
@@ -216,7 +216,7 @@ let process_type_decl file item td loc =
     full_bounds = loc;
   }
 
-let find_type_definition file ast ~line ~col =
+let type_definition file ast ~line ~col =
   let visitor =
     object
       inherit Ast_traverse.iter as super
@@ -243,7 +243,7 @@ let find_type_definition file ast ~line ~col =
 
 (* Structure/signature item bounds *)
 
-let find_structure_item_bounds file ast ~line ~col =
+let structure_item_bounds file ast ~line ~col =
   List.find_map
     (fun item ->
       let loc = location_of_ppxlib_location file item.pstr_loc in
@@ -254,7 +254,7 @@ let find_structure_item_bounds file ast ~line ~col =
       else None)
     ast
 
-let rec find_value_in_module file module_type ~line ~col =
+let rec value_in_module file module_type ~line ~col =
   match module_type.pmty_desc with
   | Pmty_signature items ->
       (* Look for value declarations inside this module signature *)
@@ -269,12 +269,12 @@ let rec find_value_in_module file module_type ~line ~col =
               else None
           | Psig_module md ->
               (* Recursively check inside nested modules *)
-              find_value_in_module file md.pmd_type ~line ~col
+              value_in_module file md.pmd_type ~line ~col
           | _ -> None)
         items
   | _ -> None
 
-let find_signature_item_bounds file ast ~line ~col =
+let signature_item_bounds file ast ~line ~col =
   Log.debug (fun m ->
       m "find_signature_item_bounds: looking for item at %s:%d:%d" file line col);
   List.find_map
@@ -292,7 +292,7 @@ let find_signature_item_bounds file ast ~line ~col =
         | Psig_module md -> (
             (* Check if we're inside a module - if so, find the specific
                value *)
-            match find_value_in_module file md.pmd_type ~line ~col with
+            match value_in_module file md.pmd_type ~line ~col with
             | Some bounds -> Some bounds
             | None ->
                 (* Not inside a value, return the whole module *)
@@ -306,8 +306,8 @@ let find_signature_item_bounds file ast ~line ~col =
 
 (* Public API *)
 
-let get_field_info ~cache ~file ~line ~col ~field_name =
-  match get_ast ~cache file with
+let field_info ~cache ~file ~line ~col ~field_name =
+  match ast_entry ~cache file with
   | Error e -> Error e
   | Ok ast -> (
       let visitor =
@@ -315,12 +315,12 @@ let get_field_info ~cache ~file ~line ~col ~field_name =
           inherit Ast_traverse.iter as super
 
           method! type_declaration td =
-            match find_field_in_type file td ~line ~col ~field_name with
+            match field_in_type file td ~line ~col ~field_name with
             | Some info -> raise (Found_field info)
             | None -> super#type_declaration td
 
           method! expression e =
-            match find_field_in_record file e ~line ~col ~field_name with
+            match field_in_record file e ~line ~col ~field_name with
             | Some info -> raise (Found_field info)
             | None -> super#expression e
         end
@@ -331,35 +331,35 @@ let get_field_info ~cache ~file ~line ~col ~field_name =
         err_field_not_found
       with Found_field info -> Ok info)
 
-let get_type_definition_info ~cache ~file ~line ~col =
-  match get_ast ~cache file with
+let type_definition_info ~cache ~file ~line ~col =
+  match ast_entry ~cache file with
   | Error e -> Error e
   | Ok ast -> (
-      match find_type_definition file ast ~line ~col with
+      match type_definition file ast ~line ~col with
       | None -> err_no_type_def
       | Some info -> Ok info)
 
-let get_item_with_docs ~cache ~file ~line ~col =
+let item_with_docs ~cache ~file ~line ~col =
   if Filename.check_suffix file ".mli" then
-    match get_interface_ast ~cache file with
+    match interface_ast ~cache file with
     | Error e -> Error e
     | Ok ast -> (
-        match find_signature_item_bounds file ast ~line ~col with
+        match signature_item_bounds file ast ~line ~col with
         | None -> err_no_sig_item
         | Some bounds ->
             (* Extend with doc comments if needed *)
             Ok (Comments.extend_location_with_comments cache file bounds))
   else
-    match get_ast ~cache file with
+    match ast_entry ~cache file with
     | Error e -> Error e
     | Ok ast -> (
-        match find_structure_item_bounds file ast ~line ~col with
+        match structure_item_bounds file ast ~line ~col with
         | None -> err_no_struct_item
         | Some bounds ->
             Ok (Comments.extend_location_with_comments cache file bounds))
 
-let get_value_binding ~cache ~file ~line ~col =
-  match get_ast ~cache file with
+let value_binding ~cache ~file ~line ~col =
+  match ast_entry ~cache file with
   | Error e -> Error e
   | Ok ast -> (
       let visitor =
@@ -378,8 +378,8 @@ let get_value_binding ~cache ~file ~line ~col =
       with Found_location loc ->
         Ok (Comments.extend_location_with_comments cache file loc))
 
-let get_enclosing_record ~cache ~file ~line ~col =
-  match get_ast ~cache file with
+let enclosing_record ~cache ~file ~line ~col =
+  match ast_entry ~cache file with
   | Error e -> Error e
   | Ok ast -> (
       let innermost = ref None in

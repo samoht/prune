@@ -35,8 +35,8 @@ val classify_build_error : Types.context -> Types.build_error_type
 
 (** {2 Project validation} *)
 
-val find_ocaml_version : unit -> string option
-(** [find_ocaml_version ()] gets the OCaml compiler version string. *)
+val ocaml_version : unit -> string option
+(** [ocaml_version ()] gets the OCaml compiler version string. *)
 
 val check_ocaml_version : unit -> (unit, [ `Msg of string ]) result
 (** [check_ocaml_version ()] checks if OCaml compiler version meets minimum

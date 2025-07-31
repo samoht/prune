@@ -6,8 +6,7 @@ let pp fmt progress = Fmt.pf fmt "<progress: %d total>" progress.total
 
 let v ~total =
   let internal =
-    if total > 0 then Output.create_progress ~total ()
-    else Output.create_progress ()
+    if total > 0 then Output.progress ~total () else Output.progress ()
   in
   { internal; total }
 

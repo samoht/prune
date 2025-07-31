@@ -113,7 +113,7 @@ let unused_field_pattern () =
       ])
 
 (* Helper to create regex for warning name extraction *)
-let create_name_regex warning_num =
+let name_regex warning_num =
   Re.compile
     (match warning_num with
     | "32" -> unused_pattern ": unused value "
@@ -174,7 +174,7 @@ let parse_warning_name line =
     let warning_num = Re.Group.get num_groups 1 in
 
     (* Then extract the name based on warning type *)
-    let name_re = create_name_regex warning_num in
+    let name_re = name_regex warning_num in
     let name_groups = Re.exec name_re line in
     (* For warning 69, we need to find which group has the field name *)
     let raw_name =
@@ -200,7 +200,7 @@ let parse_warning_name line =
   with Not_found -> None
 
 (* Create warning info from parsed components *)
-let create_warning_info location name warning_type =
+let warning_info location name warning_type =
   {
     Types.location;
     name;
@@ -229,7 +229,7 @@ let extract_signature_name line =
   with Not_found -> None
 
 (* Find location in the next few lines *)
-let find_mli_location lines_to_check =
+let mli_location lines_to_check =
   let rec search = function
     | [] -> None
     | loc_line :: more -> (
@@ -241,11 +241,11 @@ let find_mli_location lines_to_check =
   search lines_to_check
 
 (* Get next few lines to search for location *)
-let get_next_lines rest =
+let next_lines rest =
   match rest with l1 :: l2 :: l3 :: _ -> [ l1; l2; l3 ] | lines -> lines
 
 (* Create pairs of (line, remaining_lines) *)
-let make_line_pairs lines =
+let line_pairs lines =
   let rec make_pairs = function
     | [] -> []
     | line :: rest -> (line, rest) :: make_pairs rest
@@ -257,12 +257,10 @@ let process_signature_line line rest =
   match extract_signature_name line with
   | None -> []
   | Some name -> (
-      let next_lines = get_next_lines rest in
-      match find_mli_location next_lines with
+      let next_lines = next_lines rest in
+      match mli_location next_lines with
       | Some location ->
-          let warning =
-            create_warning_info location name Types.Signature_mismatch
-          in
+          let warning = warning_info location name Types.Signature_mismatch in
           [ warning ]
       | None -> [])
 
@@ -277,7 +275,7 @@ let parse_signature_mismatch_error lines =
         let warnings = process_signature_line line rest in
         warnings @ find_error remaining_pairs
   in
-  find_error (make_line_pairs lines)
+  find_error (line_pairs lines)
 
 (* Parse warnings using a simpler approach - scan for all warning messages
    first, then match with locations *)
@@ -307,7 +305,7 @@ let parse_all_from_lines lines =
             in
             match find_location (idx - 1) with
             | Some location ->
-                let warning = create_warning_info location name warning_type in
+                let warning = warning_info location name warning_type in
                 find_warnings (warning :: acc) rest
             | None ->
                 Log.debug (fun m ->
@@ -359,7 +357,7 @@ let parse_unbound_field_error lines =
               match parse_warning_line prev_line with
               | Some location ->
                   let warning =
-                    create_warning_info location field_name Types.Unbound_field
+                    warning_info location field_name Types.Unbound_field
                   in
                   Some warning
               | None -> if i > 1 then find_location (i - 1) else None

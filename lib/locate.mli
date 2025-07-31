@@ -1,35 +1,34 @@
 (** AST-based location finding using ppxlib *)
 
-val get_enclosing_record :
+val enclosing_record :
   cache:Cache.t ->
   file:string ->
   line:int ->
   col:int ->
   (Types.location, [ `Msg of string ]) result
-(** [get_enclosing_record ~cache ~file ~line ~col] gets the bounds of the
-    enclosing record construction. Used for empty record detection after field
-    removal. *)
+(** [enclosing_record ~cache ~file ~line ~col] gets the bounds of the enclosing
+    record construction. Used for empty record detection after field removal. *)
 
-val get_value_binding :
+val value_binding :
   cache:Cache.t ->
   file:string ->
   line:int ->
   col:int ->
   (Types.location, [ `Msg of string ]) result
-(** [get_value_binding ~cache ~file ~line ~col] gets the bounds of a value
-    binding for removal. This specifically looks for value bindings at any
-    nesting level (including inside modules) and returns just the binding
-    bounds, not the entire enclosing structure. *)
+(** [value_binding ~cache ~file ~line ~col] gets the bounds of a value binding
+    for removal. This specifically looks for value bindings at any nesting level
+    (including inside modules) and returns just the binding bounds, not the
+    entire enclosing structure. *)
 
-val get_item_with_docs :
+val item_with_docs :
   cache:Cache.t ->
   file:string ->
   line:int ->
   col:int ->
   (Types.location, [ `Msg of string ]) result
-(** [get_item_with_docs ~cache ~file ~line ~col] gets the bounds of a structure
-    item including its documentation comments. This finds the structure item at
-    the given position and returns its full bounds including any preceding doc
+(** [item_with_docs ~cache ~file ~line ~col] gets the bounds of a structure item
+    including its documentation comments. This finds the structure item at the
+    given position and returns its full bounds including any preceding doc
     comments. *)
 
 type field_info = {
@@ -45,14 +44,14 @@ type field_info = {
 }
 (** Information about a field in a record *)
 
-val get_field_info :
+val field_info :
   cache:Cache.t ->
   file:string ->
   line:int ->
   col:int ->
   field_name:string ->
   (field_info, [ `Msg of string ]) result
-(** [get_field_info ~cache ~file ~line ~col ~field_name] gets comprehensive
+(** [field_info ~cache ~file ~line ~col ~field_name] gets comprehensive
     information about a field at the given position. This includes all the
     context needed for proper field removal. *)
 
@@ -65,12 +64,12 @@ type type_def_info = {
 }
 (** Information about a type definition *)
 
-val get_type_definition_info :
+val type_definition_info :
   cache:Cache.t ->
   file:string ->
   line:int ->
   col:int ->
   (type_def_info, [ `Msg of string ]) result
-(** [get_type_definition_info ~cache ~file ~line ~col] gets information about a
-    type definition at the given position. This includes the location of the
-    equals sign which is needed for replacing record types with unit. *)
+(** [type_definition_info ~cache ~file ~line ~col] gets information about a type
+    definition at the given position. This includes the location of the equals
+    sign which is needed for replacing record types with unit. *)

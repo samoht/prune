@@ -4,7 +4,7 @@ open Types
 module Log = (val Logs.src_log (Logs.Src.create "prune.occurrence") : Logs.LOG)
 
 (* Find the column position of an identifier in a type declaration *)
-let get_type_identifier_column line_content start_col =
+let type_identifier_column line_content start_col =
   (* After "type", skip whitespace and type parameters to find the identifier *)
   let len = String.length line_content in
   let rec skip_whitespace i =
@@ -48,7 +48,7 @@ let get_type_identifier_column line_content start_col =
   if start < len then skip_type_params (skip_whitespace start) 0 else start
 
 (* Get the column position of the identifier based on symbol kind *)
-let get_identifier_column ~cache (symbol : symbol_info) =
+let identifier_column ~cache (symbol : symbol_info) =
   (* For .mli files, identifiers start after the keyword *)
   let is_mli =
     let len = String.length symbol.location.file in
@@ -63,7 +63,7 @@ let get_identifier_column ~cache (symbol : symbol_info) =
         match
           Cache.line cache symbol.location.file symbol.location.start_line
         with
-        | Some line_content -> get_type_identifier_column line_content col
+        | Some line_content -> type_identifier_column line_content col
         | None -> col + 5 (* Fallback to simple offset *))
     | Module -> col + 7 (* "module " = 7 chars *)
     | Constructor -> col + 10 (* "exception " = 10 chars *)
@@ -137,7 +137,7 @@ let handle_module_or_constructor (symbol : symbol_info) =
 (* Helper to query merlin for occurrences *)
 let query_merlin ~cache root_dir symbol =
   (* Adjust column position to point to identifier, not keyword *)
-  let identifier_col = get_identifier_column ~cache symbol in
+  let identifier_col = identifier_column ~cache symbol in
   let query =
     Fmt.str {|occurrences -identifier-at %d:%d -scope project|}
       symbol.location.start_line identifier_col
@@ -160,15 +160,15 @@ let query_merlin ~cache root_dir symbol =
   occurrence_data
 
 (* Get base module name from file path *)
-let get_module_base file =
+let module_base file =
   let basename = Filename.basename file in
   try Filename.chop_extension basename with Invalid_argument _ -> basename
 
 (* Get the full module path (directory + module name) to distinguish between
    modules with the same name in different directories *)
-let get_module_path file =
+let module_path file =
   let dir = Filename.dirname file in
-  let base = get_module_base file in
+  let base = module_base file in
   Filename.concat dir base
 
 (* Count occurrences by location type *)
@@ -187,7 +187,7 @@ let count_occurrences_by_location defining_module_path locations =
     (fun (loc : location) ->
       Log.debug (fun m ->
           m "    Occurrence at %s:%d:%d" loc.file loc.start_line loc.start_col);
-      let module_path = get_module_path loc.file in
+      let module_path = module_path loc.file in
       Log.debug (fun m ->
           m "      Module path: %s, defining module path: %s, equal: %b"
             module_path defining_module_path
@@ -264,7 +264,7 @@ let classify_type_value_field exclude_dirs (sym : symbol_info) occurrence_count
         (string_of_symbol_kind sym.kind)
         sym.name);
 
-  let defining_module_path = get_module_path sym.location.file in
+  let defining_module_path = module_path sym.location.file in
   let counts = count_occurrences_by_location defining_module_path locations in
 
   Log.debug (fun m ->

@@ -21,7 +21,7 @@ let is_tty () = try Unix.isatty Unix.stdout with Unix.Unix_error _ -> false
 (* {2 Dune version checking} *)
 
 (* Get dune version *)
-let find_dune_version () =
+let dune_version () =
   match OS.Cmd.run_out Cmd.(v "dune" % "--version") |> OS.Cmd.out_string with
   | Ok (version_str, _) -> Some (String.trim version_str)
   | Error _ -> None
@@ -32,7 +32,7 @@ let should_skip_dune_operations =
     (match Sys.getenv_opt "INSIDE_DUNE" with
     | None -> false
     | Some _ -> (
-        match find_dune_version () with
+        match dune_version () with
         | Some "3.19.0" -> true (* Only skip for problematic version *)
         | Some version ->
             Log.debug (fun m ->
@@ -49,7 +49,7 @@ let should_skip_dune_operations =
 (* {2 OCaml version checking} *)
 
 (* Get OCaml compiler version *)
-let find_ocaml_version () =
+let ocaml_version () =
   match OS.Cmd.run_out Cmd.(v "ocaml" % "-version") |> OS.Cmd.out_string with
   | Ok (version_str, _) -> (
       (* OCaml version output format: "The OCaml toplevel, version X.Y.Z" *)
@@ -86,7 +86,7 @@ let parse_version version_str =
 
 (* Check if OCaml version meets minimum requirements *)
 let check_ocaml_version () =
-  match find_ocaml_version () with
+  match ocaml_version () with
   | None -> Error (`Msg "Could not determine OCaml compiler version")
   | Some version_str -> (
       match parse_version version_str with
@@ -145,7 +145,7 @@ let stop_merlin_server root_dir =
 (* Get relative path for a file from root directory *)
 
 (* Run merlin with proper working directory context *)
-let get_relative_path root_dir file_path =
+let relative_path root_dir file_path =
   let fpath = Fpath.v file_path in
   (* If the path is already relative, just return it *)
   if Fpath.is_rel fpath then file_path
@@ -218,7 +218,7 @@ let call_merlin root_dir file_path query =
       Log.debug (fun m -> m "File does not exist: %s" file_path);
       `Null
   | Ok true -> (
-      let relative_path = get_relative_path root_dir file_path in
+      let relative_path = relative_path root_dir file_path in
       (* Check if the relative path file exists from root_dir *)
       let full_path_from_root =
         if root_dir = "." then relative_path
@@ -297,7 +297,7 @@ let build_project_and_index root_dir ctx =
     Ok ())
   else
     let ctx, _warnings = run_single_build root_dir ctx in
-    match Types.find_last_build_result ctx with
+    match Types.last_build_result ctx with
     | Some result when result.success ->
         Log.debug (fun m -> m "Build completed successfully");
         Ok ()
@@ -329,13 +329,13 @@ let extract_fixable_errors result =
   fixable_errors
 
 (* Create truncated output excerpt for debugging *)
-let create_output_excerpt result =
+let output_excerpt result =
   if String.length result.Types.output > 1000 then
     String.sub result.Types.output 0 1000 ^ "\n[... output truncated ...]"
   else result.Types.output
 
 let classify_build_error ctx =
-  match Types.find_last_build_result ctx with
+  match Types.last_build_result ctx with
   | None -> Types.Other_errors "No build result available"
   | Some result when result.success -> Types.No_error
   | Some result ->
@@ -345,7 +345,7 @@ let classify_build_error ctx =
       if fixable_errors <> [] then Types.Fixable_errors fixable_errors
       else
         (* Include the actual build output to help users debug *)
-        let output_excerpt = create_output_excerpt result in
+        let output_excerpt = output_excerpt result in
         Types.Other_errors output_excerpt
 
 (* Count all errors in build output, including syntax errors *)
@@ -369,7 +369,7 @@ let count_all_errors output =
 (* Helper to display build error and exit *)
 let display_failure_and_exit ctx =
   let total_error_count =
-    match Types.find_last_build_result ctx with
+    match Types.last_build_result ctx with
     | Some result -> count_all_errors result.output
     | None -> 0
   in
@@ -381,7 +381,7 @@ let display_failure_and_exit ctx =
     (if total_error_count = 1 then "error" else "errors");
 
   let pp_build_error ppf ctx =
-    match Types.find_last_build_result ctx with
+    match Types.last_build_result ctx with
     | None -> Fmt.pf ppf "No build output available"
     | Some result -> Fmt.pf ppf "%s" result.output
   in
@@ -389,7 +389,7 @@ let display_failure_and_exit ctx =
 
   (* Exit with build exit code *)
   let exit_code =
-    match Types.find_last_build_result ctx with
+    match Types.last_build_result ctx with
     | Some result -> result.exit_code
     | None -> 1
   in

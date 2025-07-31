@@ -63,7 +63,7 @@ let with_temp_project test_name content_mli content_ml f =
 
 (* Test the full removal flow with real files *)
 (* Helper to create unused symbols for test *)
-let create_unused_symbols mli_file =
+let unused_symbols mli_file =
   [
     {
       name = "unused";
@@ -107,7 +107,7 @@ type unused_t = float|}
 
   with_temp_project "test_removal" mli_content ml_content
     (fun root_dir mli_file _ml_file ->
-      let symbols = create_unused_symbols mli_file in
+      let symbols = unused_symbols mli_file in
       let cache = Cache.v () in
       match remove_unused_exports ~cache root_dir mli_file symbols with
       | Error e -> fail (Fmt.str "Unexpected error: %a" pp_error e)
@@ -121,7 +121,7 @@ type unused_t = float|}
           check_removal_results content)
 
 (* Helper to create test module data *)
-let create_module_test_data () =
+let module_test_data () =
   let symbols =
     [
       {
@@ -170,7 +170,7 @@ let create_module_test_data () =
 
 (* Test module filtering logic *)
 let test_module_filtering () =
-  let _symbols, occurrence_data = create_module_test_data () in
+  let _symbols, occurrence_data = module_test_data () in
 
   let unused = List.filter (fun occ -> occ.occurrences = 0) occurrence_data in
 

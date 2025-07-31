@@ -69,7 +69,7 @@ let determine_removal_strategy (warning : warning_info) : strategy =
 (* Handle exact bounds with optional attributes *)
 let handle_exact_bounds ~cache ~file ~line ~col include_attributes =
   if include_attributes then (
-    match Locate.get_item_with_docs ~cache ~file ~line ~col with
+    match Locate.item_with_docs ~cache ~file ~line ~col with
     | Error (`Msg msg) -> err_ast_bounds_failed msg
     | Ok loc ->
         Log.debug (fun m ->
@@ -80,7 +80,7 @@ let handle_exact_bounds ~cache ~file ~line ~col include_attributes =
 
 (* Handle value binding lookup with fallback *)
 let handle_value_binding ~cache ~file ~line ~col =
-  match Locate.get_value_binding ~cache ~file ~line ~col with
+  match Locate.value_binding ~cache ~file ~line ~col with
   | Error (`Msg msg) -> (
       (* If we can't find a value binding, fall back to standard item detection
          but log a warning as this might indicate an issue *)
@@ -89,18 +89,18 @@ let handle_value_binding ~cache ~file ~line ~col =
             "Could not find value binding at %s:%d:%d (%s), falling back to \
              item detection"
             file line col msg);
-      match Locate.get_item_with_docs ~cache ~file ~line ~col with
+      match Locate.item_with_docs ~cache ~file ~line ~col with
       | Error (`Msg msg2) -> err_ast_bounds_failed msg2
       | Ok loc -> Some loc)
   | Ok loc -> Some loc
 
 (* Handle other symbol kinds *)
 let handle_other_kinds ~cache ~file ~line ~col =
-  match Locate.get_item_with_docs ~cache ~file ~line ~col with
+  match Locate.item_with_docs ~cache ~file ~line ~col with
   | Error (`Msg msg) -> err_ast_bounds_failed msg
   | Ok loc -> Some loc
 
-let find_enclosing_expression _root_dir file line col ~location_precision ~kind
+let enclosing_expression _root_dir file line col ~location_precision ~kind
     ~name:_ ~cache ~include_attributes : location option =
   match location_precision with
   | Exact_definition | Exact_statement ->
@@ -110,8 +110,7 @@ let find_enclosing_expression _root_dir file line col ~location_precision ~kind
       | Value -> handle_value_binding ~cache ~file ~line ~col
       | _ -> handle_other_kinds ~cache ~file ~line ~col)
   | Needs_field_usage_parsing ->
-      failwith
-        "Field usage parsing should be handled in create_operation, not here"
+      failwith "Field usage parsing should be handled in operation, not here"
 
 (* {1 Field handling} *)
 
@@ -214,7 +213,7 @@ let process_field_removal ~is_definition _root_dir file cache operation =
   (* First, get comprehensive field info to check if this would create an empty
      record *)
   match
-    Locate.get_field_info ~cache ~file ~line:warning.location.start_line
+    Locate.field_info ~cache ~file ~line:warning.location.start_line
       ~col:warning.location.start_col ~field_name:warning.name
   with
   | Error (`Msg msg) -> err_field_info_detection msg
@@ -274,7 +273,7 @@ let process_character_removal root_dir file cache operation =
 (* {1 Operation creation} *)
 
 (* Create removal operation from warning *)
-let create_operation root_dir file cache (warning : warning_info) : operation =
+let operation root_dir file cache (warning : warning_info) : operation =
   let strategy = determine_removal_strategy warning in
   let enclosing =
     match (warning.location_precision, strategy) with
@@ -282,7 +281,7 @@ let create_operation root_dir file cache (warning : warning_info) : operation =
         Log.debug (fun m ->
             m "Getting enclosing expression for %s (Needs_enclosing_definition)"
               warning.name);
-        find_enclosing_expression root_dir file warning.location.start_line
+        enclosing_expression root_dir file warning.location.start_line
           warning.location.start_col
           ~location_precision:warning.location_precision
           ~kind:(Types.symbol_kind_of_warning warning.warning_type)
@@ -304,7 +303,7 @@ let create_operation root_dir file cache (warning : warning_info) : operation =
     | Needs_field_usage_parsing, Character_removal Field_usage -> (
         (* For field usage, use the new comprehensive field info *)
         match
-          Locate.get_field_info ~cache ~file ~line:warning.location.start_line
+          Locate.field_info ~cache ~file ~line:warning.location.start_line
             ~col:warning.location.start_col ~field_name:warning.name
         with
         | Error (`Msg msg) -> err_field_info_detection msg
@@ -378,7 +377,7 @@ let symbols_to_warnings symbols =
 (* Process removal operations for loaded symbols *)
 let process_operations root_dir file cache symbols =
   let warnings = symbols_to_warnings symbols in
-  let operations = List.map (create_operation root_dir file cache) warnings in
+  let operations = List.map (operation root_dir file cache) warnings in
   List.iter
     (fun op ->
       Log.debug (fun m ->
@@ -439,11 +438,11 @@ let group_warnings_by_file warnings =
     [] warnings
 
 (* Get field info for operations *)
-let get_field_infos ~cache ~file ops =
+let field_infos ~cache ~file ops =
   List.filter_map
     (fun op ->
       match
-        Locate.get_field_info ~cache ~file ~line:op.location.start_line
+        Locate.field_info ~cache ~file ~line:op.location.start_line
           ~col:op.location.start_col ~field_name:op.context.warning.name
       with
       | Ok info -> Some (op, info)
@@ -466,7 +465,7 @@ let group_by_record field_infos =
 let replace_type_with_unit cache file loc =
   (* Use AST to find the type definition and its equals sign *)
   match
-    Locate.get_type_definition_info ~cache ~file ~line:loc.start_line
+    Locate.type_definition_info ~cache ~file ~line:loc.start_line
       ~col:loc.start_col
   with
   | Error (`Msg msg) ->
@@ -538,7 +537,7 @@ let replace_record_with_unit cache file loc =
 
 (* Process all field operations together *)
 let process_field_removals ~cache ~root_dir ~file field_ops =
-  let field_infos = get_field_infos ~cache ~file field_ops in
+  let field_infos = field_infos ~cache ~file field_ops in
   let by_record = group_by_record field_infos in
 
   Log.debug (fun m ->
@@ -623,9 +622,7 @@ let process_file_warnings ~cache ~root_dir ~file file_warnings =
       err_file_read file msg
   | Ok () -> (
       (* Create removal operations for all warnings *)
-      let operations =
-        List.map (create_operation root_dir file cache) file_warnings
-      in
+      let operations = List.map (operation root_dir file cache) file_warnings in
 
       (* Group field operations *)
       let field_def_ops, field_usage_ops, other_ops =

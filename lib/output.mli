@@ -26,8 +26,8 @@ val error : ('a, Format.formatter, unit) format -> 'a
 
 type progress
 
-val create_progress : ?total:int -> unit -> progress
-(** [create_progress ?total ()] creates a progress indicator. *)
+val progress : ?total:int -> unit -> progress
+(** [progress ?total ()] creates a progress indicator. *)
 
 val update_progress : progress -> string -> unit
 (** [update_progress progress message] updates progress with a message. *)
