@@ -253,7 +253,7 @@ let test_multiple_files () =
   Sys.remove file1;
   Sys.remove file2
 
-let tests =
+let suite =
   ( "Cache",
     [
       test_case "create and clear" `Quick test_create_and_clear;

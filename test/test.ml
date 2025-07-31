@@ -3,12 +3,12 @@
 let () =
   Alcotest.run "Prune test suite"
     [
-      Test_warning.tests;
-      Test_integration.tests;
-      Test_module_alias.tests;
-      Test_locate.tests;
-      Test_removal_field.tests;
-      Test_removal_parsing.tests;
-      Test_cache.tests;
-      ("Comments", Test_comments.tests);
+      Test_warning.suite;
+      Test_integration.suite;
+      Test_module_alias.suite;
+      Test_locate.suite;
+      Test_removal_field.suite;
+      Test_removal_parsing.suite;
+      Test_cache.suite;
+      ("Comments", Test_comments.suite);
     ]

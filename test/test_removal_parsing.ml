@@ -254,7 +254,7 @@ let other = 33|}
       check bool "value removed" false
         (Re.execp (Re.compile (Re.str "value = 42")) new_content)
 
-let tests =
+let suite =
   ( "Removal parsing",
     [
       test_case "doc comment removal single line" `Quick

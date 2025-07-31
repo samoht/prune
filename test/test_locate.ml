@@ -566,7 +566,7 @@ let test_field_bounds_clamping () =
       (* Most importantly, verify end_col is reasonable (not max_int) *)
       check bool "end_col is reasonable" true (bounds.end_col < 1000)
 
-let tests =
+let suite =
   ( "Locate",
     [
       test_case "field detection simple" `Quick test_field_detection_simple;

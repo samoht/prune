@@ -115,7 +115,7 @@ val compute : t -> t
   check bool "compute declaration should be preserved" true
     (contains new_content "val compute")
 
-let tests =
+let suite =
   [
     test_case "trailing comment stops at blank line" `Quick
       test_trailing_comment_blank_line;

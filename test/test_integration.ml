@@ -182,7 +182,7 @@ let test_module_filtering () =
   check string "bar is the remaining symbol" "bar"
     (List.hd filtered).symbol.name
 
-let tests =
+let suite =
   let open Alcotest in
   ( "Integration tests",
     [

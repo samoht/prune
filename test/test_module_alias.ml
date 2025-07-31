@@ -87,7 +87,7 @@ let test_signature_mismatch_parsing () =
         expected result)
     test_cases
 
-let tests =
+let suite =
   ( "Module alias parsing",
     [
       Alcotest.test_case "Module name pattern" `Quick test_module_name_pattern;

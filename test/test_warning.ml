@@ -382,7 +382,7 @@ Warning 69 [unused-field]: record field field1 is never read.|}
       check int "line" 10 warning.location.start_line
   | _ -> fail "Expected exactly one warning"
 
-let tests =
+let suite =
   ( "Warning.parse",
     [
       test_case "simple parsing" `Quick test_simple_parsing;

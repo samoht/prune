@@ -184,7 +184,7 @@ end|}
       let address_re = Re.(compile (str "address")) in
       check bool "address field text removed" false (Re.execp address_re line5)
 
-let tests =
+let suite =
   ( "Field removal",
     [
       test_case "unused field removal" `Quick test_unused_field_removal;
