@@ -4,7 +4,7 @@
     projects. Uses merlin to analyze symbol usage across the entire project.
 
     This library is organized into several sub-modules:
-    - {!Types}: Core types and utilities
+    - Types: Core types and utilities (included in this module)
     - {!System}: System utilities (TTY, dune, merlin)
     - {!Analysis}: Symbol discovery and occurrence analysis
     - {!Removal}: File modification functions *)
