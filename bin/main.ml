@@ -148,7 +148,7 @@ let handle_analysis_result = function
       Prune.Output.error "%a" pp_error e;
       exit 1
 
-let process_clean config paths exclude_dirs log_level =
+let process_clean config paths exclude_dirs public_files log_level =
   let { dry_run = _; force = _; step_wise = _; use_merlin_server; json } =
     config
   in
@@ -165,7 +165,8 @@ let process_clean config paths exclude_dirs log_level =
   display_analyzing_message mli_files_list;
   if mode = `Iterative && List.length mli_files_list > 0 then Fmt.pr "@.";
 
-  analyze ~yes:config.force ~exclude_dirs mode root_dir mli_files_list
+  analyze ~yes:config.force ~exclude_dirs ~public_files mode root_dir
+    mli_files_list
   |> handle_analysis_result
 
 let process_doctor sample_mli log_level =
@@ -243,6 +244,13 @@ let exclude_dirs =
   in
   Arg.(value & opt (list string) [] & info [ "exclude" ] ~docv:"DIR" ~doc)
 
+let public_files =
+  let doc =
+    "Mark .mli files as public APIs whose exports should never be removed \
+     (useful for library development)"
+  in
+  Arg.(value & opt (list string) [] & info [ "public" ] ~docv:"FILE" ~doc)
+
 let json =
   let doc = "Output in JSON format" in
   Arg.(value & flag & info [ "json" ] ~doc)
@@ -273,6 +281,9 @@ let clean_man_pages =
     `Pre "  $(mname) clean lib/foo.mli lib/bar.mli --force";
     `P "Exclude test directories from occurrence counting:";
     `Pre "  $(mname) clean --exclude test --exclude tests --dry-run";
+    `P "Mark library interfaces as public (won't be removed):";
+    `Pre
+      "  $(mname) clean --public lib/mylib.mli --public lib/api.mli --dry-run";
   ]
 
 (* Subcommands *)
@@ -294,14 +305,15 @@ let clean_cmd =
           json
           paths
           exclude_dirs
+          public_files
           log_level
         ->
           let config =
             build_config dry_run force step_wise use_merlin_server json
           in
-          process_clean config paths exclude_dirs log_level)
+          process_clean config paths exclude_dirs public_files log_level)
       $ dry_run $ force $ step_wise $ merlin_server $ json $ paths
-      $ exclude_dirs $ Logs_cli.level ~env ())
+      $ exclude_dirs $ public_files $ Logs_cli.level ~env ())
   in
   Cmd.v info term
 

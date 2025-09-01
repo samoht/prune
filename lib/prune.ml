@@ -68,7 +68,7 @@ let compare_symbol_info (a : symbol_info) (b : symbol_info) =
 
 (* Display unused or test-only exports in a formatted report *)
 let display_exports ?(label = "unused") ?(no_exports_msg = "")
-    occurrences_by_file =
+    ?(show_count = true) occurrences_by_file =
   Log.debug (fun m ->
       m "display_exports (%s): %d files" label (List.length occurrences_by_file));
 
@@ -94,7 +94,7 @@ let display_exports ?(label = "unused") ?(no_exports_msg = "")
             count + List.length occs)
           0 sorted_files
       in
-      Fmt.pr "Found %d %s exports@." total_count label
+      if show_count then Fmt.pr "Found %d %s exports@." total_count label
 
 (* Perform actual removal of unused exports *)
 let perform_unused_exports_removal ~cache root_dir unused_by_file =
@@ -191,7 +191,8 @@ let process_unused_exports ~cache ~yes ~iteration root_dir all_removable =
     | Ok () -> Ok count
 
 (* Find and remove unused exports from .mli files *)
-let and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir mli_files =
+let and_remove_exports ~cache ~yes ~exclude_dirs ~public_files ~iteration
+    root_dir mli_files =
   (* Build first to ensure accurate usage information *)
   match System.build_project_and_index root_dir empty_context with
   | Error (`Build_failed _) ->
@@ -200,6 +201,17 @@ let and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir mli_files =
       match Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files with
       | Error e -> Error e
       | Ok (unused_by_file, excluded_only_by_file) ->
+          (* Filter out public files from removal *)
+          let unused_by_file =
+            List.filter
+              (fun (f, _) -> not (List.mem f public_files))
+              unused_by_file
+          in
+          let excluded_only_by_file =
+            List.filter
+              (fun (f, _) -> not (List.mem f public_files))
+              excluded_only_by_file
+          in
           let all_removable = unused_by_file @ excluded_only_by_file in
           if all_removable = [] then Ok 0
           else
@@ -272,7 +284,8 @@ let handle_build_failure ~cache root_dir iteration total_mli total_ml
               (total_ml + warning_count))
 
 (* Main iterative analysis loop *)
-let iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files =
+let iterative_analysis ~cache ~yes ~exclude_dirs ~public_files root_dir
+    mli_files =
   Fmt.pr "@.";
 
   let rec loop iteration total_mli total_ml : (stats, error) result =
@@ -282,7 +295,8 @@ let iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files =
 
     (* Remove unused exports *)
     match
-      and_remove_exports ~cache ~yes ~exclude_dirs ~iteration root_dir mli_files
+      and_remove_exports ~cache ~yes ~exclude_dirs ~public_files ~iteration
+        root_dir mli_files
     with
     | Error (`Msg "Cancelled by user") -> Error (`Msg "Cancelled by user")
     | Error e -> Error e
@@ -303,35 +317,75 @@ type mode = [ `Dry_run | `Single_pass | `Iterative ]
 
 (* Unified analyze function that handles all modes *)
 (* Handle dry run mode *)
-let analyze_dry_run ~cache ~exclude_dirs root_dir mli_files =
+let analyze_dry_run ~cache ~exclude_dirs ~public_files root_dir mli_files =
   with_built_project root_dir (fun _ctx ->
       Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files
       >>= fun (unused_by_file, excluded_only_by_file) ->
-      match (unused_by_file, excluded_only_by_file) with
-      | [], [] ->
+      (* Separate public and non-public files *)
+      let unused_in_public, unused_in_regular =
+        List.partition (fun (f, _) -> List.mem f public_files) unused_by_file
+      in
+      let excluded_in_public, excluded_in_regular =
+        List.partition
+          (fun (f, _) -> List.mem f public_files)
+          excluded_only_by_file
+      in
+
+      match
+        ( unused_in_regular,
+          excluded_in_regular,
+          unused_in_public,
+          excluded_in_public )
+      with
+      | [], [], [], [] ->
           Fmt.pr "  ";
           Output.success "No unused exports found!";
           Ok empty_stats
       | _ ->
-          (* Display unused exports *)
-          if List.length unused_by_file > 0 then display_exports unused_by_file;
+          (* Display unused exports in regular files *)
+          if List.length unused_in_regular > 0 then
+            display_exports unused_in_regular;
 
-          (* Display excluded-only exports separately *)
-          if List.length excluded_only_by_file > 0 then (
+          (* Display excluded-only exports in regular files *)
+          if List.length excluded_in_regular > 0 then (
             Output.warning "Some exports are only used in excluded directories";
             display_exports ~label:"used only in excluded dirs"
-              excluded_only_by_file);
+              excluded_in_regular);
 
-          let total =
-            count_total_symbols (unused_by_file @ excluded_only_by_file)
-          in
+          (* Display info about public files if they have unused exports *)
+          let public_unused = unused_in_public @ excluded_in_public in
+          if List.length public_unused > 0 then (
+            Fmt.pr "@.";
+            Output.section
+              "Unused exports in public files (will not be removed):";
+            display_exports ~label:"unused (public)" ~show_count:false
+              public_unused);
+
+          let removable = unused_in_regular @ excluded_in_regular in
+          let total = count_total_symbols removable in
+          (* The count was already printed by display_exports, so we don't need
+             to print again *)
+          if total = 0 && List.length public_unused > 0 then
+            Fmt.pr
+              "No removable exports (only public files have unused exports)@.";
+
           Ok { empty_stats with mli_exports_removed = total })
 
 (* Handle single pass mode *)
-let analyze_single_pass ~cache ~yes ~exclude_dirs root_dir mli_files =
+let analyze_single_pass ~cache ~yes ~exclude_dirs ~public_files root_dir
+    mli_files =
   with_built_project root_dir (fun _ctx ->
       Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files
       >>= fun (unused_by_file, excluded_only_by_file) ->
+      (* Filter out public files from removal *)
+      let unused_by_file =
+        List.filter (fun (f, _) -> not (List.mem f public_files)) unused_by_file
+      in
+      let excluded_only_by_file =
+        List.filter
+          (fun (f, _) -> not (List.mem f public_files))
+          excluded_only_by_file
+      in
       (* Combine unused and excluded-only exports for removal *)
       let all_removable = unused_by_file @ excluded_only_by_file in
       match all_removable with
@@ -369,15 +423,31 @@ let analyze_single_pass ~cache ~yes ~exclude_dirs root_dir mli_files =
             Fmt.pr "Aborted - no files were modified.@.";
             Ok empty_stats))
 
-let analyze ?(yes = false) ?(exclude_dirs = []) mode root_dir mli_files =
+let analyze ?(yes = false) ?(exclude_dirs = []) ?(public_files = []) mode
+    root_dir mli_files =
+  (* Report public files if any *)
+  (if public_files <> [] then
+     let public_in_analysis =
+       List.filter (fun f -> List.mem f mli_files) public_files
+     in
+     if public_in_analysis <> [] then (
+       Output.section
+         "Marking %d file(s) as public APIs (will not be modified):"
+         (List.length public_in_analysis);
+       List.iter (fun f -> Fmt.pr "  - %s@." f) public_in_analysis;
+       Fmt.pr "@."));
+
   let cache = Cache.v () in
   let result =
     match mode with
-    | `Dry_run -> analyze_dry_run ~cache ~exclude_dirs root_dir mli_files
+    | `Dry_run ->
+        analyze_dry_run ~cache ~exclude_dirs ~public_files root_dir mli_files
     | `Single_pass ->
-        analyze_single_pass ~cache ~yes ~exclude_dirs root_dir mli_files
+        analyze_single_pass ~cache ~yes ~exclude_dirs ~public_files root_dir
+          mli_files
     | `Iterative ->
-        iterative_analysis ~cache ~yes ~exclude_dirs root_dir mli_files
+        iterative_analysis ~cache ~yes ~exclude_dirs ~public_files root_dir
+          mli_files
   in
   (* Clear the file cache after processing *)
   Cache.clear cache;

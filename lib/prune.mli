@@ -37,15 +37,18 @@ type mode = [ `Dry_run | `Single_pass | `Iterative ]
 val analyze :
   ?yes:bool ->
   ?exclude_dirs:string list ->
+  ?public_files:string list ->
   mode ->
   string ->
   string list ->
   (stats, error) result
-(** [analyze ?yes ?exclude_dirs mode root_dir mli_files] analyzes and optionally
-    removes unused exports based on the specified mode. Returns statistics about
-    the run. The [yes] parameter only affects confirmation prompts when removing
-    code, not the analysis behavior. The [exclude_dirs] parameter specifies
-    directories whose occurrences should be ignored when counting usage. *)
+(** [analyze ?yes ?exclude_dirs ?public_files mode root_dir mli_files] analyzes
+    and optionally removes unused exports based on the specified mode. Returns
+    statistics about the run. The [yes] parameter only affects confirmation
+    prompts when removing code, not the analysis behavior. The [exclude_dirs]
+    parameter specifies directories whose occurrences should be ignored when
+    counting usage. The [public_files] parameter marks .mli files as public APIs
+    whose exports should never be removed. *)
 
 (** {2 Internal modules exposed for testing} *)
 
