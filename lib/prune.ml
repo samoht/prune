@@ -316,6 +316,30 @@ let iterative_analysis ~cache ~yes ~exclude_dirs ~public_files root_dir
 type mode = [ `Dry_run | `Single_pass | `Iterative ]
 
 (* Unified analyze function that handles all modes *)
+(* Display dry run results *)
+let display_dry_run_results ~unused_in_regular ~excluded_in_regular
+    ~unused_in_public ~excluded_in_public =
+  (* Display unused exports in regular files *)
+  if List.length unused_in_regular > 0 then display_exports unused_in_regular;
+
+  (* Display excluded-only exports in regular files *)
+  if List.length excluded_in_regular > 0 then (
+    Output.warning "Some exports are only used in excluded directories";
+    display_exports ~label:"used only in excluded dirs" excluded_in_regular);
+
+  (* Display info about public files if they have unused exports *)
+  let public_unused = unused_in_public @ excluded_in_public in
+  if List.length public_unused > 0 then (
+    Fmt.pr "@.";
+    Output.section "Unused exports in public files (will not be removed):";
+    display_exports ~label:"unused (public)" ~show_count:false public_unused);
+
+  let removable = unused_in_regular @ excluded_in_regular in
+  let total = count_total_symbols removable in
+  if total = 0 && List.length public_unused > 0 then
+    Fmt.pr "No removable exports (only public files have unused exports)@.";
+  total
+
 (* Handle dry run mode *)
 let analyze_dry_run ~cache ~exclude_dirs ~public_files root_dir mli_files =
   with_built_project root_dir (fun _ctx ->
@@ -342,33 +366,10 @@ let analyze_dry_run ~cache ~exclude_dirs ~public_files root_dir mli_files =
           Output.success "No unused exports found!";
           Ok empty_stats
       | _ ->
-          (* Display unused exports in regular files *)
-          if List.length unused_in_regular > 0 then
-            display_exports unused_in_regular;
-
-          (* Display excluded-only exports in regular files *)
-          if List.length excluded_in_regular > 0 then (
-            Output.warning "Some exports are only used in excluded directories";
-            display_exports ~label:"used only in excluded dirs"
-              excluded_in_regular);
-
-          (* Display info about public files if they have unused exports *)
-          let public_unused = unused_in_public @ excluded_in_public in
-          if List.length public_unused > 0 then (
-            Fmt.pr "@.";
-            Output.section
-              "Unused exports in public files (will not be removed):";
-            display_exports ~label:"unused (public)" ~show_count:false
-              public_unused);
-
-          let removable = unused_in_regular @ excluded_in_regular in
-          let total = count_total_symbols removable in
-          (* The count was already printed by display_exports, so we don't need
-             to print again *)
-          if total = 0 && List.length public_unused > 0 then
-            Fmt.pr
-              "No removable exports (only public files have unused exports)@.";
-
+          let total =
+            display_dry_run_results ~unused_in_regular ~excluded_in_regular
+              ~unused_in_public ~excluded_in_public
+          in
           Ok { empty_stats with mli_exports_removed = total })
 
 (* Handle single pass mode *)

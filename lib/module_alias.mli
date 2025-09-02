@@ -13,10 +13,10 @@ val is_module_alias :
 (** {2 Regular expressions exposed for testing} *)
 
 val ws : Re.t
-(** Matches zero or more whitespace characters. *)
+(** [ws] matches zero or more whitespace characters. *)
 
 val ws1 : Re.t
-(** Matches one or more whitespace characters. *)
+(** [ws1] matches one or more whitespace characters. *)
 
 val module_name : Re.t
-(** Matches a valid OCaml module name. *)
+(** [module_name] matches a valid OCaml module name. *)

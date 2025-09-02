@@ -77,7 +77,7 @@ type stats = {
 (** Statistics about a prune run *)
 
 val empty_stats : stats
-(** Empty statistics record. *)
+(** [empty_stats] is an empty statistics record. *)
 
 val pp_stats : Format.formatter -> stats -> unit
 (** [pp_stats fmt stats] pretty-prints statistics. *)
@@ -146,7 +146,7 @@ type context
 (** Context for tracking build state across operations *)
 
 val empty_context : context
-(** Empty context with no build result. *)
+(** [empty_context] is an empty context with no build result. *)
 
 (** {2 Error handling} *)
 
