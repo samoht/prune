@@ -9,8 +9,8 @@ let contains content sub =
   match
     String.split_on_char '\n' content
     |> List.find_opt (fun line ->
-           String.length line >= String.length sub
-           && String.sub line 0 (String.length sub) = sub)
+        String.length line >= String.length sub
+        && String.sub line 0 (String.length sub) = sub)
   with
   | Some _ -> true
   | None -> false

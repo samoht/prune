@@ -23,11 +23,10 @@ merlin for accurate symbol analysis across dune projects.")
   merlin
   (yojson (>= 1.6))
   (bos (>= 0.2))
-  (cmdliner (>= 1.0))
+  (cmdliner (>= 1.3.0))
   (rresult (>= 0.7))
-  (logs (>= 0.7))
+  (logs (>= 0.8.0))
   (fmt (>= 0.8))
-  (logs (>= 0.7))
   (re (>= 1.9))
   ppxlib
   (alcotest :with-test)))
