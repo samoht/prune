@@ -18,8 +18,7 @@ Test help output:
          clean [OPTION]… [PATH]…
              Find and remove unused exports in OCaml .mli files (default)
   
-         doctor [--quiet] [--verbose] [--verbosity=LEVEL] [OPTION]…
-         [MLI_FILE]
+         doctor [OPTION]… [MLI_FILE]
              Run diagnostics to check merlin and build setup
   
          show [OPTION]… [PATH]…
@@ -67,9 +66,8 @@ Test version output:
 Test invalid arguments:
 
   $ prune --invalid-option
-  prune: unknown option '--invalid-option'.
-  Usage: prune [COMMAND] …
-  Try 'prune --help' for more information.
+  Usage: prune [--help] [COMMAND] …
+  prune: unknown option --invalid-option
   [124]
 
 Test clean subcommand help:
@@ -94,6 +92,9 @@ Test clean subcommand help:
              project
   
   OPTIONS
+         --color=WHEN (absent=auto)
+             Colorize the output. WHEN must be one of auto, always or never.
+  
          --dry-run
              Only report what would be removed, don't actually remove
   
@@ -101,9 +102,6 @@ Test clean subcommand help:
              Directories to exclude from occurrence counting (e.g., test/,
              _build/). Symbols used only in excluded directories will be
              reported separately.
-  
-         -f, --force
-             Force removal without prompting for confirmation
   
 
 Test verbose mode with non-existent file:
@@ -127,8 +125,7 @@ Test doctor subcommand:
          prune-doctor - Run diagnostics to check merlin and build setup
   
   SYNOPSIS
-         prune doctor [--quiet] [--verbose] [--verbosity=LEVEL] [OPTION]…
-         [MLI_FILE]
+         prune doctor [OPTION]… [MLI_FILE]
   
   DESCRIPTION
          doctor checks your environment and project setup to diagnose potential
@@ -142,4 +139,5 @@ Test doctor subcommand:
              Sample .mli file to test merlin occurrences
   
   OPTIONS
-         -q, --quiet
+         --color=WHEN (absent=auto)
+             Colorize the output. WHEN must be one of auto, always or never.

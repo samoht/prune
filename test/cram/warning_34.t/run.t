@@ -18,6 +18,7 @@ Build shows Warning 34:
 
 Run prune - it detects the build failure due to Warning 34:
   $ prune clean . --dry-run
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   Error: Build failed:
   File "lib/test.ml", line 3, characters 0-26:

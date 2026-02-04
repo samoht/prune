@@ -1,7 +1,6 @@
 (* Symbol discovery and analysis orchestration for prune *)
 
 open Types
-open Rresult
 module Log = (val Logs.src_log (Logs.Src.create "prune.analysis") : Logs.LOG)
 
 (* {2 Symbol extraction} *)

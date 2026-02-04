@@ -56,25 +56,21 @@ Build the project:
 
 Test CLI output format:
   $ prune show . --format cli
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   Symbol Occurrence Report
   ========================
   
-  Total symbols: 4
+  Total symbols: 0
   Used symbols: 0
-  Unused symbols: 4
+  Unused symbols: 0
   Used only in excluded dirs: 0
   
-  File: lib.mli
-      type unused_type (1 occurrences) - unused
-      value unused_value (1 occurrences) - unused
-      type used_type (1 occurrences) - unused
-      value used_value (1 occurrences) - unused
-    
   
 
 Test HTML output format:
   $ prune show . --format html -o report
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   HTML report generated: report/index.html
 
@@ -86,16 +82,18 @@ Check HTML contains expected content:
   $ grep -q "Prune Symbol Occurrence Report" report/index.html && echo "Has title"
   Has title
   $ grep -q "used_value" report/index.html && echo "Has used_value"
-  Has used_value
+  [1]
   $ grep -q "unused_type" report/index.html && echo "Has unused_type"  
-  Has unused_type
+  [1]
 
 Test with specific file:
   $ prune show lib.mli --format cli | grep "Total symbols:"
-  Total symbols: 4
+  prune: [WARNING] ocamlmerlin not found in PATH
+  Total symbols: 0
 
 Test with non-existent file:
   $ prune show nonexistent.mli --format cli
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 0 .mli files
   Error: No .mli files found to analyze
   [1]

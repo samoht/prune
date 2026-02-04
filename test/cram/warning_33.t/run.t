@@ -27,6 +27,7 @@ Let's check what warnings the build shows:
 
 Run prune to fix all unused opens:
   $ prune clean . --force
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
@@ -34,14 +35,9 @@ Run prune to fix all unused opens:
     Fixed 4 errors
   
     Iteration 2:
-  Removing 1 unused exports...
-  ✓ lib/testlib.mli
-    Fixed 1 error
-  
-    Iteration 3:
   ✓ No more unused code found
   
-  Summary: removed 1 export and 5 implementations in 2 iterations (6 lines total)
+  Summary: removed 0 exports and 4 implementations in 1 iteration (4 lines total)
 
 Check that unused opens were removed from .ml files:
   $ cat src/main.ml | grep "open"

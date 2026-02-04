@@ -5,38 +5,19 @@ type mode = Normal | Quiet | Verbose | Json
 let current_mode = ref Normal
 let set_mode mode = current_mode := mode
 
-(* ANSI color codes *)
-let green = "\027[32m"
-let yellow = "\027[33m"
-let red = "\027[31m"
-let blue = "\027[34m"
-let reset = "\027[0m"
+(* Styles using Tty *)
+let style_green = Tty.Style.(fg Tty.Color.green)
+let style_yellow = Tty.Style.(fg Tty.Color.yellow)
+let style_red = Tty.Style.(fg Tty.Color.red)
+let style_blue = Tty.Style.(fg Tty.Color.blue)
 let is_tty = Unix.isatty Unix.stdout
-let with_color color s = if is_tty then color ^ s ^ reset else s
-
-(* Terminal width caching *)
-let terminal_width = ref None
-
-let terminal_width () =
-  match !terminal_width with
-  | Some w -> w
-  | None ->
-      let width =
-        try
-          let ic = Unix.open_process_in "tput cols 2>/dev/null" in
-          let w = int_of_string (input_line ic) in
-          close_in ic;
-          w
-        with End_of_file | Failure _ | Sys_error _ ->
-          80 (* Safe default if tput fails *)
-      in
-      terminal_width := Some width;
-      width
 
 (* Structured output *)
 let header fmt =
   if !current_mode <> Quiet then
-    Fmt.kstr (fun s -> Fmt.pr "%s@." (with_color blue s)) fmt
+    Fmt.kstr
+      (fun s -> Fmt.pr "%a@." (Tty.Style.styled style_blue Fmt.string) s)
+      fmt
   else Fmt.kstr ignore fmt
 
 let section fmt =
@@ -45,14 +26,22 @@ let section fmt =
 
 let success fmt =
   if !current_mode <> Quiet then
-    Fmt.kstr (fun s -> Fmt.pr "%s@." (with_color green s)) fmt
+    Fmt.kstr
+      (fun s -> Fmt.pr "%a@." (Tty.Style.styled style_green Fmt.string) s)
+      fmt
   else Fmt.kstr ignore fmt
 
 let warning fmt =
-  Fmt.kstr (fun s -> Fmt.epr "%s@." (with_color yellow ("Warning: " ^ s))) fmt
+  Fmt.kstr
+    (fun s ->
+      Fmt.epr "%a@." (Tty.Style.styled style_yellow Fmt.string) ("Warning: " ^ s))
+    fmt
 
 let error fmt =
-  Fmt.kstr (fun s -> Fmt.epr "%s@." (with_color red ("Error: " ^ s))) fmt
+  Fmt.kstr
+    (fun s ->
+      Fmt.epr "%a@." (Tty.Style.styled style_red Fmt.string) ("Error: " ^ s))
+    fmt
 
 (* Progress indicators *)
 type progress = {
@@ -62,6 +51,24 @@ type progress = {
 }
 
 let progress ?total () = { current = 0; message = ""; total }
+
+(* Terminal width detection *)
+let cached_terminal_width = ref None
+
+let terminal_width () =
+  match !cached_terminal_width with
+  | Some w -> w
+  | None ->
+      let width =
+        try
+          let ic = Unix.open_process_in "tput cols 2>/dev/null" in
+          let w = int_of_string (input_line ic) in
+          close_in ic;
+          w
+        with End_of_file | Failure _ | Sys_error _ -> 80
+      in
+      cached_terminal_width := Some width;
+      width
 
 let update_progress p msg =
   p.message <- msg;

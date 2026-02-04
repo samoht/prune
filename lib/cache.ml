@@ -1,7 +1,6 @@
 (* File caching for efficient prune operations *)
 
 open Bos
-open Rresult
 
 let src = Logs.Src.create "prune.cache" ~doc:"File caching"
 

@@ -1,4 +1,4 @@
 (executable
  (public_name prune)
  (name main)
- (libraries prune cmdliner logs.fmt logs.cli fmt.tty dune-build-info))
+ (libraries prune cmdliner vlog dune-build-info))

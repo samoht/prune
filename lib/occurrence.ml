@@ -154,8 +154,7 @@ let query_merlin ~cache root_dir symbol =
 
   (* Log detailed merlin response for debugging *)
   Log.debug (fun m ->
-      m "Merlin response for %s: %s" symbol.name
-        (Yojson.Safe.pretty_to_string occurrence_data));
+      m "Merlin response for %s: %a" symbol.name Jsont.pp_json occurrence_data);
 
   occurrence_data
 

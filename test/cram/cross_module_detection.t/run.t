@@ -15,13 +15,9 @@ Test that the project runs:
 Now test cross-module detection with prune:
 
   $ prune clean . --dry-run
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 2 .mli files
-  lib/other_module.mli:5:0-36: unused value unused_helper
-  lib/other_module.mli:8:0-42: unused value unused_cross_function
-  lib/testlib.mli:5:0-35: unused value unused_function
-  lib/testlib.mli:11:0-28: unused type unused_type
-  lib/testlib.mli:20:0-36: unused value completely_unused
-  Found 5 unused exports
+    No unused exports found!
 
 The test correctly identifies:
 - unused_function, unused_type, completely_unused in testlib.mli

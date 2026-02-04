@@ -1,7 +1,6 @@
 (* Diagnostic tool for debugging merlin and build issues *)
 
 open Bos
-open Rresult
 module Log = (val Logs.src_log (Logs.Src.create "prune.doctor") : Logs.LOG)
 
 type diagnostic_result = {
@@ -20,16 +19,34 @@ let pp_diagnostic_result fmt result =
   if result.details <> [] then
     List.iter (fun detail -> Fmt.pf fmt "@.  %s" detail) result.details
 
+(* JSON helpers *)
+let json_null = Jsont.Null ((), Jsont.Meta.none)
+
+let get_member name = function
+  | Jsont.Object (members, _) ->
+      List.find_map
+        (fun ((n, _), v) -> if n = name then Some v else None)
+        members
+  | _ -> None
+
+let get_string name json =
+  match get_member name json with
+  | Some (Jsont.String (s, _)) -> Some s
+  | _ -> None
+
+let get_int name json =
+  match get_member name json with
+  | Some (Jsont.Number (n, _)) -> Some (int_of_float n)
+  | _ -> None
+
 (* Parse merlin JSON response *)
 let parse_merlin_response output =
-  try
-    let json = Yojson.Safe.from_string output in
-    let open Yojson.Safe.Util in
-    let class_field = json |> member "class" |> to_string_option in
-    let cache = json |> member "cache" in
-    (class_field, cache)
-  with Yojson.Json_error _ | Yojson.Safe.Util.Type_error (_, _) ->
-    (None, `Null)
+  match Jsont_bytesrw.decode_string Jsont.json output with
+  | Ok json ->
+      let class_field = get_string "class" json in
+      let cache = Option.value (get_member "cache" json) ~default:json_null in
+      (class_field, cache)
+  | Error _ -> (None, json_null)
 
 (* Run command with timeout *)
 let run_with_timeout ?(timeout_secs = 5) cmd_str =
@@ -81,17 +98,11 @@ let check_merlin_cache_stats root_dir sample_mli =
   | Ok output -> (
       (* Extract cache stats from JSON *)
       match parse_merlin_response output with
-      | _, `Null -> None
+      | _, Jsont.Null _ -> None
       | _, cache -> (
-          try
-            let open Yojson.Safe.Util in
-            let cmt = cache |> member "cmt" in
-            match cmt with
-            | `Null -> None
-            | _ ->
-                let miss = cmt |> member "miss" |> to_int_option in
-                Some miss
-          with Yojson.Safe.Util.Type_error (_, _) -> None))
+          match get_member "cmt" cache with
+          | None | Some (Jsont.Null _) -> None
+          | Some cmt -> get_int "miss" cmt))
 
 (* Check merlin project configuration using merlin itself *)
 let check_merlin_config root_dir =
@@ -115,7 +126,7 @@ let check_merlin_config root_dir =
       | Some "return", _ ->
           let cache_warnings =
             match check_merlin_cache_stats root_dir None with
-            | Some (Some misses) when misses > 5 ->
+            | Some misses when misses > 5 ->
                 [
                   Fmt.str "Warning: High merlin cache misses (%d) detected"
                     misses;
@@ -203,7 +214,7 @@ let merlin_test_result ?(details = []) passed message =
 (* Get cache miss details for merlin test *)
 let cache_miss_details root_dir sample_mli =
   match check_merlin_cache_stats root_dir (Some sample_mli) with
-  | Some (Some misses) when misses > 2 ->
+  | Some misses when misses > 2 ->
       [
         Fmt.str
           "High cache misses detected (%d) - merlin may not see all compiled \

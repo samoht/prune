@@ -13,7 +13,7 @@ type merlin_mode = [ `Single | `Server ]
 val set_merlin_mode : merlin_mode -> unit
 (** [set_merlin_mode mode] sets the merlin execution mode (single or server). *)
 
-val call_merlin : string -> string -> string -> Yojson.Safe.t
+val call_merlin : string -> string -> string -> Jsont.json
 (** [call_merlin root_dir file_path query] runs merlin command on the given
     file. *)
 

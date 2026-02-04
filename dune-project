@@ -21,12 +21,13 @@ merlin for accurate symbol analysis across dune projects.")
   (ocaml (>= 5.3))
   dune
   merlin
-  (yojson (>= 1.6))
+  jsont
   (bos (>= 0.2))
   (cmdliner (>= 1.3.0))
-  (rresult (>= 0.7))
   (logs (>= 0.8.0))
   (fmt (>= 0.8))
   (re (>= 1.9))
+  tty
+  vlog
   ppxlib
   (alcotest :with-test)))

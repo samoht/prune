@@ -2,8 +2,9 @@
    communication *)
 
 open Bos
-open Rresult
 module Log = (val Logs.src_log (Logs.Src.create "prune.system") : Logs.LOG)
+
+let json_null = Jsont.Null ((), Jsont.Meta.none)
 
 (* Error helper functions *)
 let err fmt = Fmt.kstr (fun e -> Error (`Msg e)) fmt
@@ -186,37 +187,36 @@ let execute_merlin_command query_type shell_cmd =
   | Ok (output_str, (_, status)) -> (
       match status with
       | `Exited 0 -> (
-          try
-            if output_str = "" then (
-              Log.debug (fun m ->
-                  m "Merlin %s returned empty output" query_type);
-              `Null)
-            else
-              let json = Yojson.Safe.from_string output_str in
-              Log.debug (fun m ->
-                  m "Merlin %s completed successfully" query_type);
-              json
-          with exn ->
-            Log.debug (fun m ->
-                m "Failed to parse merlin %s output: %s (exception: %s)"
-                  query_type output_str (Printexc.to_string exn));
-            `Null)
+          if output_str = "" then (
+            Log.debug (fun m -> m "Merlin %s returned empty output" query_type);
+            json_null)
+          else
+            match Jsont_bytesrw.decode_string Jsont.json output_str with
+            | Ok json ->
+                Log.debug (fun m ->
+                    m "Merlin %s completed successfully" query_type);
+                json
+            | Error e ->
+                Log.debug (fun m ->
+                    m "Failed to parse merlin %s output: %s (error: %s)"
+                      query_type output_str e);
+                json_null)
       | `Exited n ->
           Log.debug (fun m -> m "Merlin %s exited with code %d" query_type n);
-          `Null
+          json_null
       | `Signaled n ->
           Log.debug (fun m -> m "Merlin %s killed by signal %d" query_type n);
-          `Null)
+          json_null)
   | Error (`Msg err) ->
       Log.debug (fun m -> m "Merlin %s failed: %s" query_type err);
-      `Null
+      json_null
 
 let call_merlin root_dir file_path query =
   (* Check if file exists *)
   match OS.File.exists (Fpath.v file_path) with
   | Ok false | Error _ ->
       Log.debug (fun m -> m "File does not exist: %s" file_path);
-      `Null
+      json_null
   | Ok true -> (
       let relative_path = relative_path root_dir file_path in
       (* Check if the relative path file exists from root_dir *)
@@ -229,7 +229,7 @@ let call_merlin root_dir file_path query =
           Log.debug (fun m ->
               m "Relative path does not exist from root: %s (root=%s, rel=%s)"
                 full_path_from_root root_dir relative_path);
-          `Null
+          json_null
       | Ok true ->
           let shell_cmd = build_merlin_command root_dir relative_path query in
           (* Extract query type from query string for better logging *)

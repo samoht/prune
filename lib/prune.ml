@@ -1,7 +1,7 @@
 (* Main prune library - public interface and orchestration *)
 
-open Rresult
 open Removal
+open Result.Syntax
 module Log = (val Logs.src_log (Logs.Src.create "prune") : Logs.LOG)
 include Types
 (* Re-export core types *)
@@ -343,8 +343,9 @@ let display_dry_run_results ~unused_in_regular ~excluded_in_regular
 (* Handle dry run mode *)
 let analyze_dry_run ~cache ~exclude_dirs ~public_files root_dir mli_files =
   with_built_project root_dir (fun _ctx ->
-      Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files
-      >>= fun (unused_by_file, excluded_only_by_file) ->
+      let* unused_by_file, excluded_only_by_file =
+        Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files
+      in
       (* Separate public and non-public files *)
       let unused_in_public, unused_in_regular =
         List.partition (fun (f, _) -> List.mem f public_files) unused_by_file
@@ -376,8 +377,9 @@ let analyze_dry_run ~cache ~exclude_dirs ~public_files root_dir mli_files =
 let analyze_single_pass ~cache ~yes ~exclude_dirs ~public_files root_dir
     mli_files =
   with_built_project root_dir (fun _ctx ->
-      Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files
-      >>= fun (unused_by_file, excluded_only_by_file) ->
+      let* unused_by_file, excluded_only_by_file =
+        Analysis.unused_exports ~cache ~exclude_dirs root_dir mli_files
+      in
       (* Filter out public files from removal *)
       let unused_by_file =
         List.filter (fun (f, _) -> not (List.mem f public_files)) unused_by_file
@@ -409,8 +411,9 @@ let analyze_single_pass ~cache ~yes ~exclude_dirs ~public_files root_dir
                   (file, List.map (fun occ -> occ.symbol) occs))
                 all_removable
             in
-            perform_unused_exports_removal ~cache root_dir symbol_by_file
-            >>= fun () ->
+            let* () =
+              perform_unused_exports_removal ~cache root_dir symbol_by_file
+            in
             let total = count_total_symbols symbol_by_file in
             let lines_removed = Cache.count_lines_removed cache in
             Ok

@@ -19,27 +19,8 @@ Build the project:
 
 Initial state - verify multi-interface detection is working:
   $ prune clean . -f --dry-run -vv 2>&1 | grep -E "(kpi_comparison|has 2 occurrences|classify_symbol)" | grep -B1 -A1 "kpi_comparison" | head -20
-  prune: [DEBUG]   [2] kpi_comparison (value) at lib/metrics.mli:4:0-5:77
-  prune: [DEBUG]   [4] kpi_comparison (value) at lib/brui.mli:5:2-6:79
-  prune: [INFO] Checking occurrences for kpi_comparison at lib/brui.mli:5:2-6:79 (adjusted to 5:6) with query: occurrences -identifier-at 5:6 -scope project
-  prune: [DEBUG] Merlin response for kpi_comparison: {
-  prune: [DEBUG] Extracted from merlin for kpi_comparison: count=2, locations=[lib/brui.mli:5:6-20; lib/metrics.mli:4:4-18]
-  prune: [DEBUG]   Analyzing 2 occurrences for value kpi_comparison
-  prune: [DEBUG]   Symbol kpi_comparison: mli_in_defining=1, external=1
-  prune: [DEBUG] Symbol kpi_comparison appears in multiple .mli files with only 2 occurrences, likely a re-export
-  prune: [DEBUG] Symbol kpi_comparison: 2 occurrences, usage=used, locations=lib/brui.mli:5:6-20, lib/metrics.mli:4:4-18
-  prune: [INFO] OCCURRENCE MAPPING: kpi_comparison@lib/brui.mli:5:2-6:79 -> 2 occurrences
-  prune: [INFO] Checking occurrences for kpi_comparison at lib/metrics.mli:4:0-5:77 (adjusted to 4:4) with query: occurrences -identifier-at 4:4 -scope project
-  prune: [DEBUG] Merlin response for kpi_comparison: {
-  prune: [DEBUG] Extracted from merlin for kpi_comparison: count=2, locations=[lib/metrics.mli:4:4-18; lib/metrics.ml:4:4-18]
-  prune: [DEBUG]   Analyzing 2 occurrences for value kpi_comparison
-  prune: [DEBUG]   Symbol kpi_comparison: mli_in_defining=1, external=0
-  prune: [DEBUG]   No external uses for kpi_comparison, in_defining_mli=1, in_defining_ml=1
-  prune: [DEBUG]   -> Marking kpi_comparison as Unused
-  prune: [DEBUG] Symbol kpi_comparison: 2 occurrences, usage=unused, locations=lib/metrics.mli:4:4-18, lib/metrics.ml:4:4-18
-  prune: [INFO] OCCURRENCE MAPPING: kpi_comparison@lib/metrics.mli:4:0-5:77 -> 2 occurrences
-  prune: [INFO] Found symbols in multiple .mli files: display, compute, kpi_comparison
   $ prune clean . -f --dry-run
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 3 .mli files
     No unused exports found!
 

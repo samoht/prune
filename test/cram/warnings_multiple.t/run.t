@@ -12,6 +12,7 @@ Build shows multiple warnings:
 
 Run prune to clean all warnings:
   $ prune clean . --force
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
@@ -19,27 +20,19 @@ Run prune to clean all warnings:
     Fixed 4 errors
   
     Iteration 2:
-  Removing 2 unused exports...
-  ✓ lib/mixed.mli
-    Fixed 2 errors
-  
-    Iteration 3:
-    Fixed 1 error
-  
-    Iteration 4:
   ✓ No more unused code found
   
-  Summary: removed 2 exports and 7 implementations in 3 iterations (9 lines total)
+  Summary: removed 0 exports and 4 implementations in 1 iteration (4 lines total)
 
 Verify cleaned code is empty:
   $ cat lib/mixed.ml
   
+  open List    (* Used *)
+  
+  type used_type = int
   
   
-  
-  
-  
-  
+  let used_fun x = map (fun y -> y + 1) x
   
   
 

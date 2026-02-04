@@ -184,10 +184,10 @@ type outline_response = outline_item list
 type occurrences_response = location list
 
 val outline_response_of_json :
-  file:string -> Yojson.Safe.t -> (outline_response, error) result
+  file:string -> Jsont.json -> (outline_response, error) result
 (** [outline_response_of_json ~file json] parses JSON response into outline. *)
 
 val occurrences_response_of_json :
-  root_dir:string -> Yojson.Safe.t -> (occurrences_response, error) result
+  root_dir:string -> Jsont.json -> (occurrences_response, error) result
 (** [occurrences_response_of_json ~root_dir json] parses JSON response into
     occurrences. *)

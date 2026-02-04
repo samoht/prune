@@ -11,11 +11,12 @@ Build the project:
 
 Run prune on special files:
   $ prune clean . --dry-run
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 3 .mli files
-  lib/no_newline.mli:1:0-29: unused value no_newline
-  Found 1 unused exports
+    No unused exports found!
 
 Test that empty and comment-only files are handled gracefully:
   $ prune clean lib/empty.mli lib/comments_only.mli --dry-run
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 2 .mli files
     No unused exports found!

@@ -7,12 +7,13 @@ the empty record type is replaced with unit to avoid syntax errors.
 Build shows warning 69 for both fields:
   $ dune build 2>&1 | grep -A1 "warning 69" | head -4
   Error (warning 69 [unused-field]): record field login_count is never read.
-  (However, this field is used to build or mutate values.)
+    (However, this field is used to build or mutate values.)
   --
   Error (warning 69 [unused-field]): record field last_login is never read.
 
 Run prune with --force:
   $ prune clean . --force
+  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 0 .mli files
   
     Iteration 1:

@@ -1,7 +1,6 @@
 (* File modification functions for removing unused exports and
    implementations *)
 
-open Rresult
 open Types
 module Log = (val Logs.src_log (Logs.Src.create "prune.removal") : Logs.LOG)
 

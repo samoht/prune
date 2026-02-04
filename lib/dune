@@ -1,4 +1,4 @@
 (library
  (public_name prune)
  (name prune)
- (libraries yojson bos rresult logs fmt re ppxlib astring unix))
+ (libraries jsont jsont.bytesrw bos logs fmt re ppxlib astring unix tty))

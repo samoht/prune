@@ -3,18 +3,6 @@
 (* Error helper functions *)
 let err fmt = Fmt.kstr (fun e -> Error (`Msg e)) fmt
 
-let err_invalid_outline () =
-  err "Invalid outline response: missing or invalid 'value' field"
-
-let err_invalid_outline_format () =
-  err "Invalid outline response: expected object"
-
-let err_invalid_occurrences () =
-  err "Invalid occurrences response: missing or invalid 'value' field"
-
-let err_invalid_occurrences_format () =
-  err "Invalid occurrences response: expected object"
-
 (* {2 Location information} *)
 
 type location = {
@@ -294,97 +282,143 @@ type outline_item = {
 type outline_response = outline_item list
 type occurrences_response = location list
 
-(* JSON parsing functions *)
-let position_of_json = function
-  | `Assoc props -> (
-      match (List.assoc_opt "line" props, List.assoc_opt "col" props) with
-      | Some (`Int line), Some (`Int col) -> Some (line, col)
-      | _ -> None)
-  | _ -> None
+(* {2 JSON schemas for merlin responses using jsont} *)
 
-(* Extract end position with fallback to start position *)
-let extract_end_position end_json start_line start_col =
-  match end_json with
-  | Some pos -> (
-      match position_of_json pos with
-      | Some (el, ec) -> (el, ec)
-      | None -> (start_line, start_col))
-  | None -> (start_line, start_col)
+(* Position in source: {line: int, col: int} *)
+type position = { line : int; col : int }
 
-(* Parse children items from JSON *)
-let rec parse_children file_str props =
-  match List.assoc_opt "children" props with
-  | Some (`List children_json) ->
-      let parsed_children =
-        List.filter_map (outline_item_of_json file_str) children_json
+let position_jsont =
+  Jsont.Object.map ~kind:"position" (fun line col -> { line; col })
+  |> Jsont.Object.mem "line" Jsont.int ~enc:(fun p -> p.line)
+  |> Jsont.Object.mem "col" Jsont.int ~enc:(fun p -> p.col)
+  |> Jsont.Object.finish
+
+(* Raw outline item from merlin (before converting to our types) *)
+type raw_outline_item = {
+  raw_kind : string;
+  raw_name : string;
+  raw_start : position;
+  raw_end : position option;
+  raw_children : raw_outline_item list;
+}
+
+let rec raw_outline_item_jsont =
+  lazy
+    (Jsont.Object.map ~kind:"outline_item"
+       (fun raw_kind raw_name raw_start raw_end raw_children ->
+         { raw_kind; raw_name; raw_start; raw_end; raw_children })
+    |> Jsont.Object.mem "kind" Jsont.string ~enc:(fun i -> i.raw_kind)
+    |> Jsont.Object.mem "name" Jsont.string ~enc:(fun i -> i.raw_name)
+    |> Jsont.Object.mem "start" position_jsont ~enc:(fun i -> i.raw_start)
+    |> Jsont.Object.opt_mem "end" position_jsont ~enc:(fun i -> i.raw_end)
+    |> Jsont.Object.mem "children"
+         (Jsont.list (Jsont.rec' raw_outline_item_jsont))
+         ~dec_absent:[]
+         ~enc:(fun i -> i.raw_children)
+    |> Jsont.Object.skip_unknown |> Jsont.Object.finish)
+
+let raw_outline_item_jsont = Lazy.force raw_outline_item_jsont
+
+(* Merlin outline response: {class: string, value: outline_item list} *)
+type raw_outline_response = {
+  outline_class : string option;
+  outline_value : raw_outline_item list;
+}
+
+let raw_outline_response_jsont =
+  Jsont.Object.map ~kind:"outline_response" (fun outline_class outline_value ->
+      { outline_class; outline_value })
+  |> Jsont.Object.opt_mem "class" Jsont.string ~enc:(fun r -> r.outline_class)
+  |> Jsont.Object.mem "value" (Jsont.list raw_outline_item_jsont) ~enc:(fun r ->
+      r.outline_value)
+  |> Jsont.Object.skip_unknown |> Jsont.Object.finish
+
+(* Raw occurrence from merlin *)
+type raw_occurrence = {
+  occ_start : position;
+  occ_end : position option;
+  occ_file : string option;
+}
+
+let raw_occurrence_jsont =
+  Jsont.Object.map ~kind:"occurrence" (fun occ_start occ_end occ_file ->
+      { occ_start; occ_end; occ_file })
+  |> Jsont.Object.mem "start" position_jsont ~enc:(fun o -> o.occ_start)
+  |> Jsont.Object.opt_mem "end" position_jsont ~enc:(fun o -> o.occ_end)
+  |> Jsont.Object.opt_mem "file" Jsont.string ~enc:(fun o -> o.occ_file)
+  |> Jsont.Object.skip_unknown |> Jsont.Object.finish
+
+(* Merlin occurrences response *)
+type raw_occurrences_response = {
+  occurrences_class : string option;
+  occurrences_value : raw_occurrence list;
+}
+
+let raw_occurrences_response_jsont =
+  Jsont.Object.map ~kind:"occurrences_response"
+    (fun occurrences_class occurrences_value ->
+      { occurrences_class; occurrences_value })
+  |> Jsont.Object.opt_mem "class" Jsont.string ~enc:(fun r ->
+      r.occurrences_class)
+  |> Jsont.Object.mem "value" (Jsont.list raw_occurrence_jsont) ~enc:(fun r ->
+      r.occurrences_value)
+  |> Jsont.Object.skip_unknown |> Jsont.Object.finish
+
+(* Convert raw outline item to our outline_item type *)
+let rec convert_outline_item ~file raw =
+  match symbol_kind_of_string raw.raw_kind with
+  | None -> None (* Unknown kind, skip *)
+  | Some kind ->
+      let start_line = raw.raw_start.line in
+      let start_col = raw.raw_start.col in
+      let end_line, end_col =
+        match raw.raw_end with
+        | Some p -> (p.line, p.col)
+        | None -> (start_line, start_col)
       in
-      if parsed_children = [] then None else Some parsed_children
-  | _ -> None
+      let location = { file; start_line; start_col; end_line; end_col } in
+      let children =
+        match raw.raw_children with
+        | [] -> None
+        | items ->
+            let converted =
+              List.filter_map (convert_outline_item ~file) items
+            in
+            if converted = [] then None else Some converted
+      in
+      Some { kind; name = raw.raw_name; location; children }
 
-and outline_item_of_json file_str = function
-  | `Assoc props -> parse_outline_props file_str props
-  | _ -> None
+(* Convert raw occurrence to location *)
+let convert_occurrence ~root_dir raw =
+  let file =
+    match raw.occ_file with Some f -> relativize_path ~root_dir f | None -> ""
+  in
+  let start_line = raw.occ_start.line in
+  let start_col = raw.occ_start.col in
+  let end_line, end_col =
+    match raw.occ_end with
+    | Some p -> (p.line, p.col)
+    | None -> (start_line, start_col)
+  in
+  location file ~line:start_line ~end_line ~start_col ~end_col
 
-and parse_outline_props file_str props =
-  match
-    ( List.assoc_opt "kind" props,
-      List.assoc_opt "name" props,
-      List.assoc_opt "start" props,
-      List.assoc_opt "end" props )
-  with
-  | Some (`String kind_str), Some (`String name), Some start_json, end_json ->
-      parse_outline_item file_str kind_str name start_json end_json props
-  | _ -> None
+(* Check if json is null *)
+let is_json_null = function Jsont.Null _ -> true | _ -> false
 
-and parse_outline_item file_str kind_str name start_json end_json props =
-  match symbol_kind_of_string kind_str with
-  | None -> None (* Unknown kind, skip this item *)
-  | Some kind -> (
-      match position_of_json start_json with
-      | None -> None
-      | Some (start_line, start_col) ->
-          let end_line, end_col =
-            extract_end_position end_json start_line start_col
-          in
-          let location =
-            { file = file_str; start_line; start_col; end_line; end_col }
-          in
-          let children = parse_children file_str props in
-          Some { kind; name; location; children })
+(* Public API: decode outline response from Jsont.json *)
+let outline_response_of_json ~file json =
+  if is_json_null json then Ok []
+  else
+    match Jsont.Json.decode raw_outline_response_jsont json with
+    | Ok raw ->
+        Ok (List.filter_map (convert_outline_item ~file) raw.outline_value)
+    | Error e -> err "Invalid outline response: %s" e
 
-let occurrence_location_of_json file = function
-  | `Assoc props -> (
-      match (List.assoc_opt "start" props, List.assoc_opt "end" props) with
-      | Some start_json, end_json -> (
-          match position_of_json start_json with
-          | None -> None
-          | Some (start_line, start_col) ->
-              let end_line, end_col =
-                extract_end_position end_json start_line start_col
-              in
-              let file = file props in
-              Some
-                (location file ~line:start_line ~end_line ~start_col ~end_col))
-      | _ -> None)
-  | _ -> None
-
-let outline_response_of_json ~file = function
-  | `Assoc response -> (
-      match List.assoc_opt "value" response with
-      | Some (`List items) ->
-          Ok (List.filter_map (outline_item_of_json file) items)
-      | _ -> err_invalid_outline ())
-  | _ -> err_invalid_outline_format ()
-
-let occurrences_response_of_json ~root_dir = function
-  | `Assoc response -> (
-      match List.assoc_opt "value" response with
-      | Some (`List items) ->
-          let file props =
-            match List.assoc_opt "file" props with
-            | Some (`String f) -> relativize_path ~root_dir f
-            | _ -> "" (* Default to empty string if no file field *)
-          in
-          Ok (List.filter_map (occurrence_location_of_json file) items)
-      | _ -> err_invalid_occurrences ())
-  | _ -> err_invalid_occurrences_format ()
+(* Public API: decode occurrences response from Jsont.json *)
+let occurrences_response_of_json ~root_dir json =
+  if is_json_null json then Ok []
+  else
+    match Jsont.Json.decode raw_occurrences_response_jsont json with
+    | Ok raw ->
+        Ok (List.map (convert_occurrence ~root_dir) raw.occurrences_value)
+    | Error e -> err "Invalid occurrences response: %s" e

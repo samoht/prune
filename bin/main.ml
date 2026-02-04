@@ -8,12 +8,6 @@ let display_analyzing_message mli_files =
   Prune.Output.header "Analyzing %d .mli file%s" count
     (if count = 1 then "" else "s")
 
-(* Setup logging with colors *)
-let setup_logs level =
-  Logs.set_level level;
-  Logs.set_reporter
-    (Logs_fmt.reporter ~dst:Format.err_formatter ~app:Fmt.stdout ())
-
 (* Check if a path should be excluded from analysis *)
 let is_excluded path =
   let segments = Fpath.segs path in
@@ -76,18 +70,15 @@ type clean_config = {
   force : bool;
   step_wise : bool;
   use_merlin_server : bool;
-  json : bool;
 }
 
-let setup_output_mode json log_level =
-  if json then Prune.Output.set_mode Prune.Output.Json
-  else
-    match log_level with
-    | Some Logs.Error -> Prune.Output.set_mode Prune.Output.Quiet
-    | Some Logs.Debug | Some Logs.Info ->
-        Prune.Output.set_mode Prune.Output.Verbose
-    | Some Logs.Warning | Some Logs.App | None ->
-        Prune.Output.set_mode Prune.Output.Normal
+let setup_output_mode () =
+  match Logs.level () with
+  | Some Logs.Error -> Prune.Output.set_mode Prune.Output.Quiet
+  | Some Logs.Debug | Some Logs.Info ->
+      Prune.Output.set_mode Prune.Output.Verbose
+  | Some Logs.Warning | Some Logs.App | None ->
+      Prune.Output.set_mode Prune.Output.Normal
 
 let validate_paths paths =
   let paths = if paths = [] then [ "." ] else paths in
@@ -148,12 +139,9 @@ let handle_analysis_result = function
       Prune.Output.error "%a" pp_error e;
       exit 1
 
-let process_clean config paths exclude_dirs public_files log_level =
-  let { dry_run = _; force = _; step_wise = _; use_merlin_server; json } =
-    config
-  in
-  setup_logs log_level;
-  setup_output_mode json log_level;
+let process_clean config paths exclude_dirs public_files () =
+  let { dry_run = _; force = _; step_wise = _; use_merlin_server } = config in
+  setup_output_mode ();
 
   let files, dirs = validate_paths paths in
   let root_dir = Sys.getcwd () in
@@ -169,15 +157,12 @@ let process_clean config paths exclude_dirs public_files log_level =
     mli_files_list
   |> handle_analysis_result
 
-let process_doctor sample_mli log_level =
-  setup_logs log_level;
+let process_doctor sample_mli () =
   match Doctor.run_diagnostics "." sample_mli with
   | Ok () -> ()
   | Error _ -> exit 1
 
-let process_show format output_dir paths use_merlin_server log_level =
-  setup_logs log_level;
-
+let process_show format output_dir paths use_merlin_server () =
   (* If no paths provided, use current directory *)
   let paths = if paths = [] then [ "." ] else paths in
 
@@ -207,9 +192,6 @@ let process_show format output_dir paths use_merlin_server log_level =
       exit 1
 
 open Cmdliner
-
-(* Common arguments *)
-let env = Cmd.Env.info "PRUNE_VERBOSE"
 
 (* Clean subcommand arguments *)
 let dry_run =
@@ -251,10 +233,6 @@ let public_files =
   in
   Arg.(value & opt (list string) [] & info [ "public" ] ~docv:"FILE" ~doc)
 
-let json =
-  let doc = "Output in JSON format" in
-  Arg.(value & flag & info [ "json" ] ~doc)
-
 (* Doctor subcommand arguments *)
 let sample_mli =
   let doc = "Sample .mli file to test merlin occurrences" in
@@ -292,8 +270,8 @@ let clean_cmd =
   let man = clean_man_pages in
   let info = Cmd.info "clean" ~doc ~man in
   let term =
-    let build_config dry_run force step_wise use_merlin_server json =
-      { dry_run; force; step_wise; use_merlin_server; json }
+    let build_config dry_run force step_wise use_merlin_server =
+      { dry_run; force; step_wise; use_merlin_server }
     in
     Term.(
       const
@@ -302,18 +280,15 @@ let clean_cmd =
           force
           step_wise
           use_merlin_server
-          json
           paths
           exclude_dirs
           public_files
-          log_level
+          ()
         ->
-          let config =
-            build_config dry_run force step_wise use_merlin_server json
-          in
-          process_clean config paths exclude_dirs public_files log_level)
-      $ dry_run $ force $ step_wise $ merlin_server $ json $ paths
-      $ exclude_dirs $ public_files $ Logs_cli.level ~env ())
+          let config = build_config dry_run force step_wise use_merlin_server in
+          process_clean config paths exclude_dirs public_files ())
+      $ dry_run $ force $ step_wise $ merlin_server $ paths $ exclude_dirs
+      $ public_files $ Vlog.setup "prune")
   in
   Cmd.v info term
 
@@ -336,9 +311,7 @@ let doctor_cmd =
     ]
   in
   let info = Cmd.info "doctor" ~doc ~man in
-  let term =
-    Term.(const process_doctor $ sample_mli $ Logs_cli.level ~env ())
-  in
+  let term = Term.(const process_doctor $ sample_mli $ Vlog.setup "prune") in
   Cmd.v info term
 
 (* Show subcommand arguments *)
@@ -387,7 +360,7 @@ let show_cmd =
   let term =
     Term.(
       const process_show $ format $ output_dir $ paths $ merlin_server
-      $ Logs_cli.level ~env ())
+      $ Vlog.setup "prune")
   in
   Cmd.v info term
 
@@ -422,9 +395,6 @@ let cmd =
   Cmd.group info ~default [ clean_cmd; doctor_cmd; show_cmd ]
 
 let main () =
-  (* Initialize logs with colors if terminal supports it *)
-  Fmt_tty.setup_std_outputs ();
-
   (* Check OCaml version before proceeding *)
   (match Prune.System.check_ocaml_version () with
   | Ok () -> ()

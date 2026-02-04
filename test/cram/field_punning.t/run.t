@@ -8,26 +8,26 @@ instead of `{ name = name; value = value; }`.
 Build shows unbound field errors:
   $ dune build 2>&1 | grep -E "Error:|unbound|field" | head -10
   7 |     extra = "bad";  (* This field is unbound *)
-  Error: Unbound record field "extra"
+  Error: Unbound record field extra
   13 |     unused_field = "unused";  (* This field doesn't exist in the type *)
-  Error: Unbound record field "unused_field"
+  Error: Unbound record field unused_field
 
 Run prune to fix the unbound fields:
   $ prune clean . --force -vv 2>&1 | grep -E "(Iteration|Fixed|unused_field|debug|Unbound_field|Error|warning)" | grep -v DEBUG
     Iteration 1:
-  Error: Unbound record field "extra"
+  Error: Unbound record field extra
   13 |     unused_field = "unused";  (* This field doesn't exist in the type *)
-  Error: Unbound record field "unused_field"
+  Error: Unbound record field unused_field
     Fixed 2 errors
     Iteration 2:
   14 |     debug;  (* Punned unbound field *)
-  Error: Unbound record field "debug"
+  Error: Unbound record field debug
   31 |     debug;  (* This field doesn't exist - will cause unbound field error *)
-  Error: Unbound record field "debug"
+  Error: Unbound record field debug
     Fixed 2 errors
     Iteration 3:
-  Error: The implementation "lib/testlib.ml"
-  Error: The implementation "lib/testlib.ml"
+  Error: The implementation lib/testlib.ml
+  Error: The implementation lib/testlib.ml
 
 Check the result - the punned fields should remain intact while unbound fields are removed:
   $ cat lib/testlib.ml | sed 's/  *$//'
@@ -67,15 +67,15 @@ Check the result - the punned fields should remain intact while unbound fields a
 Build should succeed now:
   $ dune build
   File "lib/testlib.ml", line 1:
-  Error: The implementation "lib/testlib.ml"
-         does not match the interface "lib/testlib.ml": 
+  Error: The implementation lib/testlib.ml
+         does not match the interface lib/testlib.mli: 
          Values do not match:
            val make_config_with_error : string -> int -> bool -> 'a -> config
          is not included in
            val make_config_with_error : string -> int -> bool -> config
-         The type "string -> int -> bool -> 'a -> config"
-         is not compatible with the type "string -> int -> bool -> config"
-         Type "'a -> config" is not compatible with type "config"
+         The type string -> int -> bool -> 'a -> config
+         is not compatible with the type string -> int -> bool -> config
+         Type 'a -> config is not compatible with type config
          File "lib/testlib.mli", line 9, characters 0-60: Expected declaration
          File "lib/testlib.ml", line 26, characters 4-26: Actual declaration
   [1]
