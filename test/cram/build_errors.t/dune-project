@@ -1,0 +1,2 @@
+(lang dune 3.0)
+(name build_errors_test)

@@ -1,0 +1,8 @@
+(* Main binary that uses brui - but not kpi_comparison *)
+let () = 
+  (* Use Brui.run which internally uses Metrics.compute and display *)
+  Brui.run ();
+  (* Also directly use some Metrics functions through Brui to ensure they're not marked as unused *)
+d  let _ = Brui.Metrics.compute 10 in
+  Brui.Metrics.display "test"
+  (* Note: kpi_comparison is NOT used anywhere *)

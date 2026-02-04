@@ -1,0 +1,1 @@
+let () = Testlib.used_func ()

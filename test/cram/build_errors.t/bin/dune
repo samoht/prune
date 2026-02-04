@@ -1,0 +1,3 @@
+(executable
+ (public_name main)
+ (libraries testlib))

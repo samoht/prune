@@ -1,0 +1,1 @@
+let no_newline () = ()

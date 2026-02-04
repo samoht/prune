@@ -1,0 +1,17 @@
+(library
+ (name test_lib)
+ (modules test_lib))
+
+(library
+ (name test_mod)
+ (modules test_mod))
+
+(executable
+ (name main)
+ (modules main)
+ (libraries test_lib test_mod))
+
+(executable
+ (name use_mod)
+ (modules use_mod)
+ (libraries test_mod))

@@ -1,0 +1,4 @@
+(executable
+ (public_name dir_test)
+ (name main)
+ (libraries lib1 lib2 lib3))

@@ -1,0 +1,2 @@
+(library
+ (name special_files_test))

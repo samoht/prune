@@ -1,0 +1,1 @@
+let () = Printf.printf "x = %d\n" Testlib.x

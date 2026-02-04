@@ -1,0 +1,3 @@
+(library
+ (name test_lib)
+ (flags :standard -w +37 -warn-error +37))

@@ -1,0 +1,3 @@
+(library
+ (name mixed_lib)
+ (flags :standard -w +32+33+34))

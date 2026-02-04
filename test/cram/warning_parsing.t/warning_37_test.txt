@@ -1,0 +1,9 @@
+File "lib/example.ml", line 10, characters 2-12:
+10 |   | UnusedCtor
+       ^^^^^^^^^^
+Error (warning 37 [unused-constructor]): unused constructor UnusedCtor.
+
+File "lib/types.ml", line 25, characters 2-15:
+25 |   | ObsoleteVariant
+       ^^^^^^^^^^^^^
+Error (warning 37 [unused-constructor]): unused constructor ObsoleteVariant.
