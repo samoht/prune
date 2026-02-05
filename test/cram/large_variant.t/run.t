@@ -5,10 +5,11 @@ This test has a token type with 28 constructors. The main binary only
 constructs 8 of them: Int, Float, Ident, Plus, Star, LParen, RParen, EOF.
 The remaining 20 constructors trigger warning 37.
 
-This stress-tests prune's ability to handle bulk constructor removal
-from a large variant type without corrupting the type definition.
+This stress-tests prune's handling of large variant types. Prune
+conservatively skips constructors since merlin's occurrence detection
+is not reliable for them.
 
-Build fails due to many unused constructors:
+Build the project:
 
   $ dune build
 

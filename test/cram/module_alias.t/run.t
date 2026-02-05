@@ -15,10 +15,12 @@ Build and run prune:
   Analyzing 4 .mli files
   lib/internal.mli:2:0-33: unused value make_array
   lib/original.mli:1:0-24: unused value compute
-  lib/sigs.mli:2:2-13: unused value x
-  Found 3 unused exports
+  Found 2 unused exports
 
-This is wrong! Module aliases should not be marked as unused.
+Module aliases (mylib.mli) are correctly not reported as unused.
+Values inside module type signatures (sigs.mli) are also correctly
+not reported since they are part of the type definition.
+Only genuinely unused values (make_array, compute) are detected.
 
 Test 2: Module type aliases
 ----------------------------

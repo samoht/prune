@@ -6,11 +6,6 @@ This test verifies that prune correctly detects and removes unused exports.
 Build the project first:
   $ dune build
 
-First, let's check what symbols merlin sees in the .mli file:
-  $ ocamlmerlin single outline -filename lib/test_lib.mli < lib/test_lib.mli | \
-  > jq -r '.value[] | "\(.kind): \(.name)"' | sort
-  ocamlmerlin: command not found
-
 Run prune with --dry-run to see what would be removed:
   $ prune clean . --dry-run
   Analyzing 1 .mli file
@@ -36,6 +31,9 @@ Run prune without arguments (iterative cleanup with prompt):
   Remove unused exports? [y/N]: n (not a tty)
   Cancelled - no changes made
 
+
+
+
 Files should remain unchanged (no confirmation given):
   $ wc -l < lib/test_lib.mli
         22
@@ -54,6 +52,10 @@ Run prune with -f for automatic removal:
   ✓ No more unused code found
   
   Summary: removed 2 exports and 2 implementations in 1 iteration (6 lines total)
+
+
+
+
 
 Verify unused items were removed from interface:
   $ cat lib/test_lib.mli
@@ -92,67 +94,10 @@ Verify unused items were removed from interface:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Note that blank lines are left in place of removed items.
 
-BUG: The exceptions (Unused_error) and module aliases (Unused_module) are NOT removed.
-This is because merlin's occurrence detection is broken for modules and exceptions,
+The exceptions (Unused_error) and module aliases (Unused_module) are NOT removed
+because merlin's occurrence detection is unreliable for modules and exceptions,
 so prune conservatively keeps them to avoid breaking code.
 
 Verify unused items were removed from implementation:
@@ -172,9 +117,6 @@ Verify unused items were removed from implementation:
   module Used_module = String
   
   module Unused_module = List
-
-
-
 
 
 

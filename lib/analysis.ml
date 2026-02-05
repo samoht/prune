@@ -27,11 +27,17 @@ let rec convert_outline_item (item : Merlin.outline_item) : outline_item option
   | Some kind ->
       let location = convert_location item.location in
       let children =
-        match item.children with
-        | [] -> None
-        | items ->
-            let converted = List.filter_map convert_outline_item items in
-            if converted = [] then None else Some converted
+        match item.kind with
+        | Module_type ->
+            (* Children of module types are part of the type signature, not
+               independently removable exports *)
+            None
+        | _ -> (
+            match item.children with
+            | [] -> None
+            | items ->
+                let converted = List.filter_map convert_outline_item items in
+                if converted = [] then None else Some converted)
       in
       Some { kind; name = item.name; location; children }
 

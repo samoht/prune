@@ -2,13 +2,14 @@ Test show command functionality
 ===============================
 
 This test verifies that the show command displays symbol occurrence statistics.
+Used symbols should be reported as "used", unused symbols as "unused".
 
 Create a simple project with some symbols:
   $ cat > lib.mli << EOF
   > (** A value that is used *)
   > val used_value : int -> int
   > 
-  > (** A value that is unused *)  
+  > (** A value that is unused *)
   > val unused_value : string -> string
   > 
   > (** A type that is used *)
@@ -31,7 +32,7 @@ Create a simple project with some symbols:
   > let result = used_value 21
   > let t : used_type = 42
   > 
-  > let () = 
+  > let () =
   >   Printf.printf "Result: %d\n" result;
   >   Printf.printf "Type value: %d\n" t
   > EOF
@@ -51,25 +52,35 @@ Create a simple project with some symbols:
   >  (libraries lib))
   > EOF
 
-Build the project:
-  $ dune build
+Build the project (including ocaml-index for cross-file occurrence detection):
+  $ dune build @all @ocaml-index
 
-Test CLI output format:
+Test CLI output format (used_value and used_type should be "used"):
   $ prune show . --format cli
   Analyzing 1 .mli file
   Symbol Occurrence Report
   ========================
   
   Total symbols: 4
-  Used symbols: 0
-  Unused symbols: 4
+  Used symbols: 2
+  Unused symbols: 2
   Used only in excluded dirs: 0
   
   File: lib.mli
-      type unused_type (1 occurrences) - unused
-      value unused_value (1 occurrences) - unused
-      type used_type (1 occurrences) - unused
-      value used_value (1 occurrences) - unused
+      type unused_type (2 occurrences) - unused
+        Used in:
+          lib.ml:4:5
+      value unused_value (2 occurrences) - unused
+        Used in:
+          lib.ml:2:4
+      type used_type (3 occurrences) - used
+        Used in:
+          lib.ml:3:5
+          main.ml:4:8
+      value used_value (3 occurrences) - used
+        Used in:
+          lib.ml:1:4
+          main.ml:3:13
     
   
 
@@ -87,7 +98,7 @@ Check HTML contains expected content:
   Has title
   $ grep -q "used_value" report/index.html && echo "Has used_value"
   Has used_value
-  $ grep -q "unused_type" report/index.html && echo "Has unused_type"  
+  $ grep -q "unused_type" report/index.html && echo "Has unused_type"
   Has unused_type
 
 Test with specific file:
