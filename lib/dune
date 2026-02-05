@@ -2,6 +2,7 @@
  (public_name prune)
  (name prune)
  (libraries
+  ocaml-merlin
   jsont
   jsont.bytesrw
   bos

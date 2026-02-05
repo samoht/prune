@@ -13,7 +13,7 @@ bug-reports: "https://github.com/samoht/prune/issues"
 depends: [
   "ocaml" {>= "5.3"}
   "dune" {>= "3.0"}
-  "merlin"
+  "ocaml-merlin"
   "jsont"
   "bos" {>= "0.2"}
   "cmdliner" {>= "1.3.0"}

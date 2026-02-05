@@ -1,10 +1,8 @@
-(* System utilities for prune - TTY detection, dune operations, and merlin
-   communication *)
+(* System utilities for prune - TTY detection, dune operations, and project
+   validation *)
 
 open Bos
 module Log = (val Logs.src_log (Logs.Src.create "prune.system") : Logs.LOG)
-
-let json_null = Jsont.Null ((), Jsont.Meta.none)
 
 (* Error helper functions *)
 let err fmt = Fmt.kstr (fun e -> Error (`Msg e)) fmt
@@ -16,25 +14,22 @@ let err_version_parse version = err "Could not parse OCaml version: %s" version
 
 (* {2 TTY and environment detection} *)
 
-(* Check if we're running in a TTY (for progress display) *)
 let is_tty () = try Unix.isatty Unix.stdout with Unix.Unix_error _ -> false
 
 (* {2 Dune version checking} *)
 
-(* Get dune version *)
 let dune_version () =
   match OS.Cmd.run_out Cmd.(v "dune" % "--version") |> OS.Cmd.out_string with
   | Ok (version_str, _) -> Some (String.trim version_str)
   | Error _ -> None
 
-(* Lazy computation of whether we should skip dune operations *)
 let should_skip_dune_operations =
   lazy
     (match Sys.getenv_opt "INSIDE_DUNE" with
     | None -> false
     | Some _ -> (
         match dune_version () with
-        | Some "3.19.0" -> true (* Only skip for problematic version *)
+        | Some "3.19.0" -> true
         | Some version ->
             Log.debug (fun m ->
                 m "Dune version %s detected, safe to run nested dune commands"
@@ -49,27 +44,20 @@ let should_skip_dune_operations =
 
 (* {2 OCaml version checking} *)
 
-(* Get OCaml compiler version *)
 let ocaml_version () =
   match OS.Cmd.run_out Cmd.(v "ocaml" % "-version") |> OS.Cmd.out_string with
   | Ok (version_str, _) -> (
-      (* OCaml version output format: "The OCaml toplevel, version X.Y.Z" *)
       let version_str = String.trim version_str in
       match String.split_on_char ' ' version_str with
       | _ :: _ :: _ :: "version" :: version :: _ -> Some version
       | _ -> None)
   | Error _ -> None
 
-(* Parse version string to compare *)
 let parse_version version_str =
-  (* Extract just the numeric part before any '+' or '-' *)
   let extract_number s =
     match String.split_on_char '+' s with
     | num :: _ -> (
-        (* Also handle '-' in case of versions like 5.3.1-dev *)
-        match String.split_on_char '-' num with
-        | num :: _ -> num
-        | [] -> num)
+        match String.split_on_char '-' num with num :: _ -> num | [] -> num)
     | [] -> s
   in
   match String.split_on_char '.' version_str with
@@ -85,7 +73,6 @@ let parse_version version_str =
       with Failure _ -> None)
   | _ -> None
 
-(* Check if OCaml version meets minimum requirements *)
 let check_ocaml_version () =
   match ocaml_version () with
   | None -> Error (`Msg "Could not determine OCaml compiler version")
@@ -103,147 +90,8 @@ let check_ocaml_version () =
                      prune."
                     version_str)))
 
-(* {2 Merlin communication} *)
-
-type merlin_mode = [ `Single | `Server ]
-(* Merlin mode selection *)
-
-let merlin_mode = ref `Single
-
-let set_merlin_mode mode =
-  merlin_mode := mode;
-  (* Log merlin executable information on first use *)
-  (match OS.Cmd.run_out Cmd.(v "which" % "ocamlmerlin") |> OS.Cmd.to_string with
-  | Ok path -> Log.info (fun m -> m "Using ocamlmerlin: %s" (String.trim path))
-  | Error _ -> Log.warn (fun m -> m "ocamlmerlin not found in PATH"));
-
-  (* Log merlin version *)
-  match
-    OS.Cmd.run_out Cmd.(v "ocamlmerlin" % "-version") |> OS.Cmd.to_string
-  with
-  | Ok version ->
-      Log.info (fun m -> m "Merlin version: %s" (String.trim version))
-  | Error _ -> ()
-
-(* Stop merlin server if running *)
-let stop_merlin_server root_dir =
-  if !merlin_mode = `Server then (
-    Log.debug (fun m -> m "Stopping merlin server in %s" root_dir);
-    (* Use shell command to ensure correct PATH/environment *)
-    let shell_cmd =
-      if root_dir = "." then "ocamlmerlin server stop-server"
-      else
-        Fmt.str "cd %s && ocamlmerlin server stop-server"
-          (Filename.quote root_dir)
-    in
-    let cmd = Cmd.(v "sh" % "-c" % shell_cmd) in
-    (* Run with stderr ignored *)
-    match OS.Cmd.run ~err:OS.Cmd.err_null cmd with
-    | Ok () -> Log.debug (fun m -> m "Merlin server stopped")
-    | Error (`Msg err) ->
-        Log.debug (fun m -> m "Failed to stop merlin server: %s" err))
-
-(* Get relative path for a file from root directory *)
-
-(* Run merlin with proper working directory context *)
-let relative_path root_dir file_path =
-  let fpath = Fpath.v file_path in
-  (* If the path is already relative, just return it *)
-  if Fpath.is_rel fpath then file_path
-  else
-    match Fpath.relativize ~root:(Fpath.v root_dir) fpath with
-    | Some rel ->
-        let rel_str = Fpath.to_string rel in
-        Log.debug (fun m ->
-            m "Relativized %s -> %s (root: %s)" file_path rel_str root_dir);
-        rel_str
-    | None ->
-        Log.debug (fun m ->
-            m "Could not relativize %s (root: %s)" file_path root_dir);
-        file_path
-
-(* Build merlin shell command *)
-let build_merlin_command root_dir relative_path query =
-  let merlin_cmd =
-    match !merlin_mode with `Single -> "single" | `Server -> "server"
-  in
-  (* Build the full path for stdin redirection *)
-  let full_path =
-    if root_dir = "." then relative_path
-    else Filename.concat root_dir relative_path
-  in
-  (* Use relative_path for -filename (merlin expects this) and full_path for
-     stdin redirection *)
-  Fmt.str "ocamlmerlin %s %s -filename %s < %s" merlin_cmd query
-    (Filename.quote relative_path)
-    (Filename.quote full_path)
-
-(* Execute merlin command and parse output *)
-let execute_merlin_command query_type shell_cmd =
-  Log.debug (fun m -> m "Running merlin %s: %s" query_type shell_cmd);
-  (* Run merlin directly without timeout wrapper *)
-  let cmd = Cmd.(v "sh" % "-c" % shell_cmd) in
-  match OS.Cmd.run_out ~err:OS.Cmd.err_null cmd |> OS.Cmd.out_string with
-  | Ok (output_str, (_, status)) -> (
-      match status with
-      | `Exited 0 -> (
-          if output_str = "" then (
-            Log.debug (fun m -> m "Merlin %s returned empty output" query_type);
-            json_null)
-          else
-            match Jsont_bytesrw.decode_string Jsont.json output_str with
-            | Ok json ->
-                Log.debug (fun m ->
-                    m "Merlin %s completed successfully" query_type);
-                json
-            | Error e ->
-                Log.debug (fun m ->
-                    m "Failed to parse merlin %s output: %s (error: %s)"
-                      query_type output_str e);
-                json_null)
-      | `Exited n ->
-          Log.debug (fun m -> m "Merlin %s exited with code %d" query_type n);
-          json_null
-      | `Signaled n ->
-          Log.debug (fun m -> m "Merlin %s killed by signal %d" query_type n);
-          json_null)
-  | Error (`Msg err) ->
-      Log.debug (fun m -> m "Merlin %s failed: %s" query_type err);
-      json_null
-
-let call_merlin root_dir file_path query =
-  (* Check if file exists *)
-  match OS.File.exists (Fpath.v file_path) with
-  | Ok false | Error _ ->
-      Log.debug (fun m -> m "File does not exist: %s" file_path);
-      json_null
-  | Ok true -> (
-      let relative_path = relative_path root_dir file_path in
-      (* Check if the relative path file exists from root_dir *)
-      let full_path_from_root =
-        if root_dir = "." then relative_path
-        else Filename.concat root_dir relative_path
-      in
-      match OS.File.exists (Fpath.v full_path_from_root) with
-      | Ok false | Error _ ->
-          Log.debug (fun m ->
-              m "Relative path does not exist from root: %s (root=%s, rel=%s)"
-                full_path_from_root root_dir relative_path);
-          json_null
-      | Ok true ->
-          let shell_cmd = build_merlin_command root_dir relative_path query in
-          (* Extract query type from query string for better logging *)
-          let query_type =
-            if Re.execp (Re.compile (Re.str "outline")) query then "outline"
-            else if Re.execp (Re.compile (Re.str "occurrences")) query then
-              "occurrences"
-            else "query"
-          in
-          execute_merlin_command query_type shell_cmd)
-
 (* {2 Project validation} *)
 
-(* Check if directory contains a dune project *)
 let validate_dune_project root_dir =
   let root_path = Fpath.v root_dir in
   let dune_project = Fpath.(root_path / "dune-project") in
@@ -253,10 +101,8 @@ let validate_dune_project root_dir =
 
 (* {2 Dune build operations} *)
 
-(* Run a build command and return structured result *)
 let run_build_command _cmd_desc build_cmd =
   Log.debug (fun m -> m "Running: %s" (Cmd.to_string build_cmd));
-  (* Use Bos to run command and capture both stdout and stderr together *)
   match
     OS.Cmd.run_out ~err:OS.Cmd.err_run_out build_cmd |> OS.Cmd.out_string
   with
@@ -268,24 +114,17 @@ let run_build_command _cmd_desc build_cmd =
       in
       { Types.success = exit_code = 0; output; exit_code; warnings = [] }
 
-(* Run single build that captures both index and warnings *)
 let run_single_build root_dir ctx =
   Log.info (fun m -> m "Running build");
-  (* Build all targets and ocaml-index for merlin to ensure proper indexing *)
   let build_cmd =
     Cmd.(v "dune" % "build" % "--root" % root_dir % "@all" % "@ocaml-index")
   in
-
   let result = run_build_command "build" build_cmd in
   let ctx = Types.update_build_result ctx result in
-
-  (* Parse warnings from output *)
   let warnings = Warning.parse result.output in
   let ctx = Types.update_build_result ctx { result with warnings } in
-
   (ctx, warnings)
 
-(* Build project and index for analysis *)
 let build_project_and_index root_dir ctx =
   if Lazy.force should_skip_dune_operations then (
     Log.info (fun m ->
@@ -301,25 +140,19 @@ let build_project_and_index root_dir ctx =
     | Some result when result.success ->
         Log.debug (fun m -> m "Build completed successfully");
         Ok ()
-    | _ ->
-        (* Build failed - return error with context so caller can display the
-           error *)
-        Error (`Build_failed ctx)
+    | _ -> Error (`Build_failed ctx)
 
-(* Analyze the last build result and classify the error type *)
-(* Check if a warning type is fixable by prune *)
 let is_fixable_warning warning_type =
   match warning_type with
   | Types.Signature_mismatch | Types.Unbound_field -> true
-  | Types.Unused_value -> true (* Warning 32 is fixable *)
-  | Types.Unused_type -> true (* Warning 34 is fixable *)
-  | Types.Unused_open -> true (* Warning 33 is fixable *)
-  | Types.Unused_constructor -> true (* Warning 37 is fixable *)
-  | Types.Unused_field -> true (* Warning 69 is fixable *)
-  | Types.Unnecessary_mutable -> true (* Warning 69 mutable - fixable *)
+  | Types.Unused_value -> true
+  | Types.Unused_type -> true
+  | Types.Unused_open -> true
+  | Types.Unused_constructor -> true
+  | Types.Unused_field -> true
+  | Types.Unnecessary_mutable -> true
   | _ -> false
 
-(* Extract fixable errors from build result *)
 let extract_fixable_errors result =
   let parsed_errors : Types.warning_info list = result.Types.warnings in
   let fixable_errors =
@@ -328,7 +161,6 @@ let extract_fixable_errors result =
   Log.debug (fun m -> m "Found %d fixable errors" (List.length fixable_errors));
   fixable_errors
 
-(* Create truncated output excerpt for debugging *)
 let output_excerpt result =
   if String.length result.Types.output > 1000 then
     String.sub result.Types.output 0 1000 ^ "\n[... output truncated ...]"
@@ -339,23 +171,18 @@ let classify_build_error ctx =
   | None -> Types.Other_errors "No build result available"
   | Some result when result.success -> Types.No_error
   | Some result ->
-      (* Check if we have errors that we can fix *)
       Log.debug (fun m -> m "Build failed with output:\n%s" result.output);
       let fixable_errors = extract_fixable_errors result in
       if fixable_errors <> [] then Types.Fixable_errors fixable_errors
       else
-        (* Include the actual build output to help users debug *)
         let output_excerpt = output_excerpt result in
         Types.Other_errors output_excerpt
 
-(* Count all errors in build output, including syntax errors *)
 let count_all_errors output =
   let lines = String.split_on_char '\n' output in
   List.fold_left
     (fun count line ->
       let line = String.trim line in
-      (* Count lines that start with "Error:" or contain "error" after file
-         location *)
       if String.length line > 6 && String.sub line 0 6 = "Error:" then count + 1
       else if
         Re.execp
@@ -366,28 +193,22 @@ let count_all_errors output =
       else count)
     0 lines
 
-(* Helper to display build error and exit *)
 let display_failure_and_exit ctx =
   let total_error_count =
     match Types.last_build_result ctx with
     | Some result -> count_all_errors result.output
     | None -> 0
   in
-
-  (* Display build failure consistently *)
   Fmt.pr "%a with %d %s - full output:@."
     Fmt.(styled (`Fg `Red) string)
     "Build failed" total_error_count
     (if total_error_count = 1 then "error" else "errors");
-
   let pp_build_error ppf ctx =
     match Types.last_build_result ctx with
     | None -> Fmt.pf ppf "No build output available"
     | Some result -> Fmt.pf ppf "%s" result.output
   in
   Fmt.pr "%a@." pp_build_error ctx;
-
-  (* Exit with build exit code *)
   let exit_code =
     match Types.last_build_result ctx with
     | Some result -> result.exit_code

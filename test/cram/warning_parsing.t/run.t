@@ -15,7 +15,6 @@ Build and capture warnings (build fails due to warning 32):
 
 Test that prune can handle projects with warning 32:
   $ prune clean . --force
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 0 .mli files
   
     Iteration 1:

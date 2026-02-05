@@ -3,6 +3,24 @@
 open Types
 module Log = (val Logs.src_log (Logs.Src.create "prune.occurrence") : Logs.LOG)
 
+(* {2 Merlin type conversions} *)
+
+let convert_occurrence ~root_dir (occ : Merlin.occurrence) : location =
+  let file = occ.loc.file in
+  let file =
+    let root_dir_fpath = Fpath.v root_dir in
+    let path_fpath = Fpath.v file in
+    match Fpath.relativize ~root:root_dir_fpath path_fpath with
+    | None -> file
+    | Some rel ->
+        let rel_str = Fpath.to_string rel in
+        if String.length rel_str >= 2 && String.sub rel_str 0 2 = "./" then
+          String.sub rel_str 2 (String.length rel_str - 2)
+        else rel_str
+  in
+  Types.location ~line:occ.loc.start.line ~end_line:occ.loc.end_.line
+    ~start_col:occ.loc.start.col ~end_col:occ.loc.end_.col file
+
 (* Find the column position of an identifier in a type declaration *)
 let type_identifier_column line_content start_col =
   (* After "type", skip whitespace and type parameters to find the identifier *)
@@ -70,19 +88,6 @@ let identifier_column ~cache (symbol : symbol_info) =
     | Field -> col (* Fields don't have a keyword prefix *)
   else col (* For .ml files, use position as-is *)
 
-(* Extract locations from merlin response *)
-let extract_locations ~root_dir (symbol : symbol_info) json =
-  match occurrences_response_of_json ~root_dir json with
-  | Error (`Msg e) ->
-      Log.debug (fun m ->
-          m "Failed to parse occurrences for %s: %s" symbol.name e);
-      (0, [])
-  | Error (`Build_error _ctx) ->
-      Log.debug (fun m ->
-          m "Build error while parsing occurrences for %s" symbol.name);
-      (0, [])
-  | Ok locations -> (List.length locations, locations)
-
 (* Check if a file or directory is in the excluded list *)
 let is_excluded_file exclude_dirs file_path =
   match exclude_dirs with
@@ -136,27 +141,26 @@ let handle_module_or_constructor (symbol : symbol_info) =
 
 (* Helper to query merlin for occurrences *)
 let query_merlin ~cache root_dir symbol =
-  (* Adjust column position to point to identifier, not keyword *)
   let identifier_col = identifier_column ~cache symbol in
-  let query =
-    Fmt.str {|occurrences -identifier-at %d:%d -scope project|}
-      symbol.location.start_line identifier_col
-  in
-
   Log.info (fun m ->
-      m "Checking occurrences for %s at %a (adjusted to %d:%d) with query: %s"
-        symbol.name pp_location symbol.location symbol.location.start_line
-        identifier_col query);
-
-  let occurrence_data =
-    System.call_merlin root_dir symbol.location.file query
+      m "Checking occurrences for %s at %a (adjusted to %d:%d)" symbol.name
+        pp_location symbol.location symbol.location.start_line identifier_col);
+  let m = Merlin.create ~backend:Lib ~root_dir () in
+  let result =
+    Merlin.occurrences m ~file:symbol.location.file
+      ~line:symbol.location.start_line ~col:identifier_col ~scope:Project
   in
-
-  (* Log detailed merlin response for debugging *)
-  Log.debug (fun m ->
-      m "Merlin response for %s: %a" symbol.name Jsont.pp_json occurrence_data);
-
-  occurrence_data
+  Merlin.close m;
+  match result with
+  | Error e ->
+      Log.debug (fun f ->
+          f "Merlin occurrences failed for %s: %s" symbol.name e);
+      (0, [])
+  | Ok occ_result ->
+      let locations =
+        List.map (convert_occurrence ~root_dir) occ_result.occurrences
+      in
+      (List.length locations, locations)
 
 (* Get base module name from file path *)
 let module_base file =
@@ -313,11 +317,7 @@ let check_single ~cache exclude_dirs root_dir (symbol : symbol_info) =
   | Module | Constructor -> handle_module_or_constructor symbol
   | _ ->
       (* For values and types, use merlin occurrences *)
-      let occurrence_data = query_merlin ~cache root_dir symbol in
-
-      let occurrence_count, locations =
-        extract_locations ~root_dir symbol occurrence_data
-      in
+      let occurrence_count, locations = query_merlin ~cache root_dir symbol in
 
       Log.debug (fun m ->
           m "Extracted from merlin for %s: count=%d, locations=[%s]" symbol.name

@@ -1,0 +1,3 @@
+(library
+ (name pipeline)
+ (flags :standard -w +32 -warn-error +32))

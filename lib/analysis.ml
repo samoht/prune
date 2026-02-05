@@ -3,6 +3,38 @@
 open Types
 module Log = (val Logs.src_log (Logs.Src.create "prune.analysis") : Logs.LOG)
 
+(* {2 Merlin type conversions} *)
+
+let convert_symbol_kind (kind : Merlin.symbol_kind) : symbol_kind option =
+  match kind with
+  | Value -> Some Value
+  | Type -> Some Type
+  | Module -> Some Module
+  | Constructor -> Some Constructor
+  | Exception -> Some Constructor
+  | Field -> Some Field
+  | Module_type -> Some Module
+  | Class | Class_type | Method | Label -> None
+
+let convert_location (loc : Merlin.location) : location =
+  Types.location ~line:loc.start.line ~end_line:loc.end_.line
+    ~start_col:loc.start.col ~end_col:loc.end_.col loc.file
+
+let rec convert_outline_item (item : Merlin.outline_item) : outline_item option
+    =
+  match convert_symbol_kind item.kind with
+  | None -> None
+  | Some kind ->
+      let location = convert_location item.location in
+      let children =
+        match item.children with
+        | [] -> None
+        | items ->
+            let converted = List.filter_map convert_outline_item items in
+            if converted = [] then None else Some converted
+      in
+      Some { kind; name = item.name; location; children }
+
 (* {2 Symbol extraction} *)
 
 (* Helper to create a symbol with its children *)
@@ -43,13 +75,15 @@ and outline_item_to_symbol ~cache (item : outline_item) =
 
 (* Get all exported symbols from a single .mli file *)
 let file_symbols ~cache root_dir file_str =
-  let merlin_result = System.call_merlin root_dir file_str "outline" in
-  match outline_response_of_json ~file:file_str merlin_result with
+  let m = Merlin.create ~backend:Lib ~root_dir () in
+  let result = Merlin.outline m ~file:file_str in
+  Merlin.close m;
+  match result with
   | Error e ->
-      Log.warn (fun m ->
-          m "Failed to parse outline for %s: %a" file_str pp_error e);
+      Log.warn (fun m -> m "Merlin outline failed for %s: %s" file_str e);
       []
-  | Ok outline_items ->
+  | Ok merlin_items ->
+      let outline_items = List.filter_map convert_outline_item merlin_items in
       let symbols =
         List.concat_map (outline_item_to_symbol ~cache) outline_items
       in

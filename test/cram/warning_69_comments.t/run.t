@@ -13,9 +13,9 @@ Build the project:
 
 Check what prune detects (currently no field warnings):
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
-    No unused exports found!
+  lib/testlib.mli:11:0-34: unused value make_simple
+  Found 1 unused exports
 
 The unused fields (age, id) are not detected because:
 - Warning 69 only triggers when fields are never read AND never used in constructors
@@ -23,12 +23,17 @@ The unused fields (age, id) are not detected because:
 
 Remove what is detected:
   $ prune clean . --force
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
     Iteration 1:
-    ✓ No unused code found
+  Removing 1 unused exports...
+  ✓ lib/testlib.mli
+  
+    Iteration 2:
+  ✓ No more unused code found
+  
+  Summary: removed 1 export and 0 implementations in 1 iteration (1 line total)
 
 Future improvement needed:
 1. Better detection of unused fields (may require compiler changes)

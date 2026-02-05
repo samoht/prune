@@ -14,17 +14,6 @@
 include module type of Types
 (** Re-export core types for convenience *)
 
-(** {2 System utilities} *)
-
-type merlin_mode = [ `Single | `Server ]
-
-val set_merlin_mode : merlin_mode -> unit
-(** [set_merlin_mode mode] sets the merlin execution mode (single or server). *)
-
-val stop_merlin_server : string -> unit
-(** [stop_merlin_server root_dir] stops the merlin server in the given
-    directory. *)
-
 (** {2 Main interface functions} *)
 
 type mode = [ `Dry_run | `Single_pass | `Iterative ]

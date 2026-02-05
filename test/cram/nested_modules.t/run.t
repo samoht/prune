@@ -22,9 +22,21 @@ Check what merlin's outline shows for nested modules:
 Run prune to detect unused exports:
 
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 2 .mli files
-    No unused exports found!
+  test_lib.mli:7:2-29: unused value top_unused
+  test_lib.mli:16:2-24: unused type unused_type
+  test_lib.mli:20:4-25: unused value get
+  test_lib.mli:21:4-25: unused value set
+  test_lib.mli:22:4-37: unused value update
+  test_lib.mli:26:2-29: unused value get_count
+  test_lib.mli:27:2-30: unused value increment
+  test_lib.mli:32:4-32: unused value l1_unused
+  test_lib.mli:37:6-34: unused value l2_unused
+  test_lib.mli:46:4-28: unused value unused1
+  test_lib.mli:47:4-34: unused value unused2
+  test_lib.mli:51:6-32: unused value unused3
+  test_lib.mli:52:6-27: unused type unused_t
+  Found 13 unused exports
 
 Analyze the results:
 
@@ -78,9 +90,21 @@ are not used externally, prune correctly identifies them as unused exports.
 Let's see what prune detects:
 
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 2 .mli files
-    No unused exports found!
+  test_lib.mli:7:2-29: unused value top_unused
+  test_lib.mli:16:2-24: unused type unused_type
+  test_lib.mli:20:4-25: unused value get
+  test_lib.mli:21:4-25: unused value set
+  test_lib.mli:22:4-37: unused value update
+  test_lib.mli:26:2-29: unused value get_count
+  test_lib.mli:27:2-30: unused value increment
+  test_lib.mli:32:4-32: unused value l1_unused
+  test_lib.mli:37:6-34: unused value l2_unused
+  test_lib.mli:46:4-28: unused value unused1
+  test_lib.mli:47:4-34: unused value unused2
+  test_lib.mli:51:6-32: unused value unused3
+  test_lib.mli:52:6-27: unused type unused_t
+  Found 13 unused exports
 
 Note that Store.get, Store.set, and Store.update are marked as unused because
 they're only used within the same file, not externally. This is correct behavior
@@ -92,16 +116,45 @@ Let's apply prune's changes:
   $ cp test_lib.ml test_lib.ml.bak
 
   $ prune clean . -f
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 2 .mli files
   
   
     Iteration 1:
-    ✓ No unused code found
+  Removing 13 unused exports...
+  ✓ test_lib.mli
+    Fixed 11 errors
+  
+    Iteration 2:
+    Fixed 2 errors
+  
+    Iteration 3:
+    Fixed 1 error
+  
+    Iteration 4:
+  ✓ No more unused code found
+  
+  Summary: removed 13 exports and 14 implementations in 3 iterations (30 lines total)
 
 Check what happened to Store module in the .mli:
 
   $ diff -u test_lib.mli.bak test_lib.mli | grep -A3 -B3 "Store\|get\|set\|update" || true
+  +
+  +
+     (** Internal store module - functions only used within this module *)
+     module Store : sig
+  -    val get : unit -> int
+  -    val set : int -> unit
+  -    val update : (int -> int) -> unit
+  +
+  +
+  +
+     end
+   
+  -  (** Functions that use Store internally *)
+  -  val get_count : unit -> int
+  -  val increment : unit -> unit
+   
+  +
 
 The Store module's functions were removed from the .mli. Now let's see if this
 triggers warnings when we build:
@@ -111,7 +164,6 @@ triggers warnings when we build:
 Now run prune again to "fix" these warnings:
 
   $ prune clean . -f
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 2 .mli files
   
   

@@ -65,12 +65,7 @@ let mli_files root_dir files dirs =
     in
     mli_files @ dir_mlis
 
-type clean_config = {
-  dry_run : bool;
-  force : bool;
-  step_wise : bool;
-  use_merlin_server : bool;
-}
+type clean_config = { dry_run : bool; force : bool; step_wise : bool }
 
 let setup_output_mode () =
   match Logs.level () with
@@ -121,11 +116,6 @@ let validate_paths paths =
 
   (files, dirs)
 
-let setup_merlin_server use_merlin_server root_dir =
-  set_merlin_mode (if use_merlin_server then `Server else `Single);
-  let cleanup () = stop_merlin_server root_dir in
-  at_exit cleanup
-
 let determine_mode config =
   if config.dry_run then `Dry_run
   else if config.step_wise then `Single_pass
@@ -140,12 +130,10 @@ let handle_analysis_result = function
       exit 1
 
 let process_clean config paths exclude_dirs public_files () =
-  let { dry_run = _; force = _; step_wise = _; use_merlin_server } = config in
   setup_output_mode ();
 
   let files, dirs = validate_paths paths in
   let root_dir = Sys.getcwd () in
-  setup_merlin_server use_merlin_server root_dir;
 
   let mli_files_list = mli_files root_dir files dirs in
   let mode = determine_mode config in
@@ -162,18 +150,9 @@ let process_doctor sample_mli () =
   | Ok () -> ()
   | Error _ -> exit 1
 
-let process_show format output_dir paths use_merlin_server () =
-  (* If no paths provided, use current directory *)
+let process_show format output_dir paths () =
   let paths = if paths = [] then [ "." ] else paths in
-
   let root_dir = Sys.getcwd () in
-
-  (* Set merlin mode *)
-  set_merlin_mode (if use_merlin_server then `Server else `Single);
-
-  (* Register cleanup function to stop merlin server if using server mode *)
-  let cleanup () = stop_merlin_server root_dir in
-  at_exit cleanup;
 
   (* Get .mli files using the existing logic *)
   let files, dirs =
@@ -208,10 +187,6 @@ let step_wise =
      once without cleaning implementations)"
   in
   Arg.(value & flag & info [ "s"; "step-wise" ] ~doc)
-
-let merlin_server =
-  let doc = "Use merlin server mode instead of single mode (experimental)" in
-  Arg.(value & flag & info [ "server" ] ~doc)
 
 let paths =
   let doc =
@@ -270,25 +245,13 @@ let clean_cmd =
   let man = clean_man_pages in
   let info = Cmd.info "clean" ~doc ~man in
   let term =
-    let build_config dry_run force step_wise use_merlin_server =
-      { dry_run; force; step_wise; use_merlin_server }
-    in
+    let build_config dry_run force step_wise = { dry_run; force; step_wise } in
     Term.(
-      const
-        (fun
-          dry_run
-          force
-          step_wise
-          use_merlin_server
-          paths
-          exclude_dirs
-          public_files
-          ()
-        ->
-          let config = build_config dry_run force step_wise use_merlin_server in
+      const (fun dry_run force step_wise paths exclude_dirs public_files () ->
+          let config = build_config dry_run force step_wise in
           process_clean config paths exclude_dirs public_files ())
-      $ dry_run $ force $ step_wise $ merlin_server $ paths $ exclude_dirs
-      $ public_files $ Vlog.setup "prune")
+      $ dry_run $ force $ step_wise $ paths $ exclude_dirs $ public_files
+      $ Vlog.setup "prune")
   in
   Cmd.v info term
 
@@ -352,15 +315,11 @@ let show_cmd =
       `Pre "  $(mname) show --format html -o report";
       `P "Analyze specific directories:";
       `Pre "  $(mname) show lib/ src/";
-      `P "Use merlin server mode:";
-      `Pre "  $(mname) show --server";
     ]
   in
   let info = Cmd.info "show" ~doc ~man in
   let term =
-    Term.(
-      const process_show $ format $ output_dir $ paths $ merlin_server
-      $ Vlog.setup "prune")
+    Term.(const process_show $ format $ output_dir $ paths $ Vlog.setup "prune")
   in
   Cmd.v info term
 

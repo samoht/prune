@@ -12,19 +12,26 @@ Build the test project:
 Test prune dry-run to see what would be removed:
 
   $ prune clean --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
-    No unused exports found!
+  lib/cleanlib.mli:5:0-38: unused value unused_function
+  lib/cleanlib.mli:8:0-31: unused type unused_type
+  Found 2 unused exports
 
 Remove the unused exports:
 
   $ prune clean --force
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
     Iteration 1:
-    ✓ No unused code found
+  Removing 2 unused exports...
+  ✓ lib/cleanlib.mli
+    Fixed 2 errors
+  
+    Iteration 2:
+  ✓ No more unused code found
+  
+  Summary: removed 2 exports and 2 implementations in 1 iteration (6 lines total)
 
 Check if project builds after removal:
   $ dune build 2>&1 || echo "Build failed"
@@ -34,11 +41,10 @@ Verify the cleaned .mli file:
   (** Function that will be used *)
   val used_function : int -> int
   
-  (** Function that will be detected as unused *)
-  val unused_function : string -> string
   
-  (** Type that will be detected as unused *)
-  type unused_type = int * string
+  
+  
+  
 
 Verify the project still works:
 
@@ -49,6 +55,5 @@ Verify the project still works:
 Verify no more unused exports:
 
   $ prune clean --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
     No unused exports found!

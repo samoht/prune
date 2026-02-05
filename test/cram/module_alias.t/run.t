@@ -12,9 +12,11 @@ Test 1: Module alias used for API compatibility
 Build and run prune:
   $ dune build
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 4 .mli files
-    No unused exports found!
+  lib/internal.mli:2:0-33: unused value make_array
+  lib/original.mli:1:0-24: unused value compute
+  lib/sigs.mli:2:2-13: unused value x
+  Found 3 unused exports
 
 This is wrong! Module aliases should not be marked as unused.
 

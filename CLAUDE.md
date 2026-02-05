@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`prune` is an OCaml utility that automatically removes unused exports from `.mli` interface files in dune projects. It uses existing OCaml tooling (`ocamlmerlin`) to analyze dependencies and symbol usage.
+`prune` is an OCaml utility that automatically removes unused exports from `.mli` interface files in dune projects. It uses the `ocaml-merlin` library (merlin-lib) directly to analyze dependencies and symbol usage.
 
 ## Quick Start for Development
 
@@ -24,7 +24,7 @@ dune install
 - **Code Exploration**: always read and write mli first before looking at the code
 - **Error handling**: Use `err_*` helper functions for consistent error messages (see `docs/GUIDELINES.md` for pattern)
 - **Library architecture**: Library code never calls `exit` directly - only returns errors for main.ml to handle
-- **Testing**: NEVER run `dune`, `ocamlmerlin`, or `prune` commands directly in *.t (cram) test directories - these are test fixtures accessed only through `dune runtest`. DO NOT CD into test/cram directories to run commands! See `test/cram/README.md` for proper cram test commands.
+- **Testing**: NEVER run `dune` or `prune` commands directly in *.t (cram) test directories - these are test fixtures accessed only through `dune runtest`. DO NOT CD into test/cram directories to run commands! See `test/cram/README.md` for proper cram test commands.
 - **Comments**: Use normal comments `(* *)` in .ml files; doc comments `(** **)` only in .mli files
 - **Dependencies**: Uses Re library for regex patterns, not String.contains
 

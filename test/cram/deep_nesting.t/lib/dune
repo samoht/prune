@@ -1,0 +1,3 @@
+(library
+ (name protocol)
+ (flags :standard -w +32+37 -warn-error +32+37))

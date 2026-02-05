@@ -20,7 +20,7 @@ merlin for accurate symbol analysis across dune projects.")
  (depends
   (ocaml (>= 5.3))
   dune
-  merlin
+  ocaml-merlin
   jsont
   (bos (>= 0.2))
   (cmdliner (>= 1.3.0))

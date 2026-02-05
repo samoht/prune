@@ -9,15 +9,19 @@ Build the project:
 
 Run prune without --exclude:
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
-    No unused exports found!
+  lib/mylib.mli:8:0-38: unused value completely_unused
+  Found 1 unused exports
 
 Run prune with --exclude test (excluding the test directory):
   $ prune clean . --dry-run --exclude test
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
-    No unused exports found!
+  lib/mylib.mli:8:0-38: unused value completely_unused
+  Found 1 unused exports
+  Warning: Some exports are only used in excluded directories
+  lib/mylib.mli:2:0-32: used only in excluded dirs value test_helper
+  lib/mylib.mli:5:0-41: used only in excluded dirs value create_test_data
+  Found 2 used only in excluded dirs exports
 
 The output correctly shows:
 - completely_unused: truly unused (not used anywhere)  

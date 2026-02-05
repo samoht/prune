@@ -8,6 +8,12 @@ Initial build should succeed:
 Run prune with verbose output to see the iterations:
   $ prune clean -f -v lib/testlib.mli 2>&1 | grep -E "(Iteration|Fixed|unused_helper|exported_func)" | sed 's/^[^:]*: //'
     Iteration 1:
+  [INFO] Checking occurrences for exported_func at lib/testlib.mli:2:0-32 (adjusted to 2:4)
+  [INFO] OCCURRENCE MAPPING: exported_func@lib/testlib.mli:2:0-32 -> 2 occurrences
+    Fixed 1 error
+    Iteration 2:
+    Fixed 1 error
+    Iteration 3:
 
 This demonstrates the expected behavior due to OCaml compiler limitations:
 - Iteration 1: Removes exported_func from .mli (fixes signature mismatch)

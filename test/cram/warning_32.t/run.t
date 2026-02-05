@@ -9,7 +9,6 @@ Build shows warning 32 for unexported values:
 
 Run prune in dry-run mode:
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   Error: Build failed:
   File "lib/test.ml", line 3, characters 4-17:
@@ -20,7 +19,6 @@ Run prune in dry-run mode:
 
 Run prune with --force to remove unused values:
   $ prune clean . --force
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
@@ -28,17 +26,21 @@ Run prune with --force to remove unused values:
     Fixed 1 error
   
     Iteration 2:
+  Removing 2 unused exports...
+  ✓ lib/test.mli
+    Fixed 2 errors
+  
+    Iteration 3:
   ✓ No more unused code found
   
-  Summary: removed 0 exports and 1 implementation in 1 iteration (1 line total)
+  Summary: removed 2 exports and 3 implementations in 2 iterations (6 lines total)
 
 Verify exports were removed:
   $ cat lib/test.mli
-  val used_fun : int -> int
-  val unused_fun : unit -> int
-  (* internal_only is not exported *)
+  
+  
 
 Verify implementations were also cleaned:
   $ cat lib/test.ml
-  let used_fun x = x + 1
-  let unused_fun () = 42
+  
+  

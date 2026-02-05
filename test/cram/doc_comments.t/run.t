@@ -13,21 +13,30 @@ Build the project:
 
 Check what will be removed:
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
-    No unused exports found!
+  lib/doclib.mli:10:0-32: unused value unused_leading
+  lib/doclib.mli:12:0-32: unused value unused_trailing
+  lib/doclib.mli:18:0-35: unused value unused_mixed
+  lib/doclib.mli:25:0-37: unused value unused_multiline
+  Found 4 unused exports
 
 
 
 
 Remove the unused exports:
   $ prune clean . --force
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
     Iteration 1:
-    ✓ No unused code found
+  Removing 4 unused exports...
+  ✓ lib/doclib.mli
+    Fixed 4 errors
+  
+    Iteration 2:
+  ✓ No more unused code found
+  
+  Summary: removed 4 exports and 4 implementations in 1 iteration (20 lines total)
 
 Verify the result:
   $ cat lib/doclib.mli
@@ -37,26 +46,26 @@ Verify the result:
   (** This function is actually used *)
   val used : unit -> unit
   
-  (* Regular comment that should stay *)
   
-  (** Leading doc comment for unused function *)
-  val unused_leading : unit -> int
   
-  val unused_trailing : int -> int
-  (** Trailing doc comment that should be removed *)
   
-  (** Leading multi-line doc comment
-      with several lines of documentation
-      that should all be removed *)
-  val unused_mixed : string -> string
-  (** Also has a trailing comment *)
   
-  (** Complex documentation
-      @param () unit parameter
-      @return string value
-      @since 1.0.0 *)
-  val unused_multiline : unit -> string
-  (** Post-doc: implementation details *)
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   (* Regular comment after *)
   
   (** Documentation for a used function *)

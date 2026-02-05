@@ -22,11 +22,6 @@ let err_build_failed ctx = err "Build failed:@.%a" pp_build_error ctx
 let err_build_no_info () = err "Build failed with no error information"
 let err_build_error ctx = Error (`Build_error ctx)
 
-type merlin_mode = System.merlin_mode
-
-let set_merlin_mode = System.set_merlin_mode
-let stop_merlin_server = System.stop_merlin_server
-
 (* {2 User interaction} *)
 
 (* Ask user for confirmation, defaulting to 'no' if not in a TTY *)

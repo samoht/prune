@@ -24,7 +24,6 @@ Build fails due to warning 32:
 
 Analyze with dry-run to see what would be removed:
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   Error: Build failed:
   File "lib/testlib.ml", line 3, characters 4-21:
@@ -42,7 +41,6 @@ Note: Only the heads of unused chains are initially detected.
 
 Run iterative cleanup:
   $ prune clean . --force
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
@@ -50,9 +48,14 @@ Run iterative cleanup:
     Fixed 2 errors
   
     Iteration 2:
+  Removing 7 unused exports...
+  ✓ lib/testlib.mli
+    Fixed 8 errors
+  
+    Iteration 3:
   ✓ No more unused code found
   
-  Summary: removed 0 exports and 2 implementations in 1 iteration (2 lines total)
+  Summary: removed 7 exports and 10 implementations in 2 iterations (25 lines total)
 
 The cleanup removed:
 - unused_export and its helper
@@ -61,7 +64,7 @@ The cleanup removed:
 
 Verify what remains:
   $ cat lib/testlib.mli | grep "^val" | wc -l
-         9
+         2
 
 The remaining exports are:
 - entry, step1, step2, step3 (used chain starting from bin)
@@ -72,7 +75,6 @@ Build should now succeed:
 
 Test specific path analysis:
   $ prune clean lib/ --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
     No unused exports found!
 

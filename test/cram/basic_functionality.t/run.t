@@ -13,9 +13,10 @@ First, let's check what symbols merlin sees in the .mli file:
 
 Run prune with --dry-run to see what would be removed:
   $ prune clean . --dry-run
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
-    No unused exports found!
+  lib/test_lib.mli:5:0-35: unused value unused_value
+  lib/test_lib.mli:11:0-24: unused type unused_type
+  Found 2 unused exports
 
 Files should not be modified with --dry-run:
   $ wc -l < lib/test_lib.mli
@@ -23,12 +24,17 @@ Files should not be modified with --dry-run:
 
 Run prune without arguments (iterative cleanup with prompt):
   $ prune clean .
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
     Iteration 1:
-    ✓ No unused code found
+  
+  Found 2 unused exports:
+  lib/test_lib.mli:5:0-35: unused value unused_value
+  lib/test_lib.mli:11:0-24: unused type unused_type
+  Found 2 unused exports
+  Remove unused exports? [y/N]: n (not a tty)
+  Cancelled - no changes made
 
 Files should remain unchanged (no confirmation given):
   $ wc -l < lib/test_lib.mli
@@ -36,26 +42,32 @@ Files should remain unchanged (no confirmation given):
 
 Run prune with -f for automatic removal:
   $ prune clean . -f
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 1 .mli file
   
   
     Iteration 1:
-    ✓ No unused code found
+  Removing 2 unused exports...
+  ✓ lib/test_lib.mli
+    Fixed 2 errors
+  
+    Iteration 2:
+  ✓ No more unused code found
+  
+  Summary: removed 2 exports and 2 implementations in 1 iteration (6 lines total)
 
 Verify unused items were removed from interface:
   $ cat lib/test_lib.mli
   (** A value that is used by main.ml *)
   val used_value : int -> int
   
-  (** A value that is never used *)
-  val unused_value : string -> string
+  
+  
   
   (** A type that is used *)
   type used_type = int
   
-  (** A type that is never used *)
-  type unused_type = float
+  
+  
   
   (** An exception that is used *)
   exception Used_error
@@ -147,11 +159,11 @@ Verify unused items were removed from implementation:
   $ cat lib/test_lib.ml
   let used_value x = x * 2
   
-  let unused_value s = s ^ "_unused"
+  
   
   type used_type = int
   
-  type unused_type = float
+  
   
   exception Used_error
   

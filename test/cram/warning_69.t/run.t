@@ -10,7 +10,6 @@ Build shows warning 69:
 
 Run prune with --force:
   $ prune clean . --force
-  prune: [WARNING] ocamlmerlin not found in PATH
   Analyzing 0 .mli files
   
     Iteration 1:

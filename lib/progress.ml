@@ -1,4 +1,4 @@
-(* Progress display that delegates to the CLI output system *)
+(* Progress display that delegates to Tty.Progress *)
 
 type t = { internal : Output.progress; total : int }
 

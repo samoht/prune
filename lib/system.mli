@@ -1,25 +1,10 @@
-(** System utilities for prune - TTY detection, dune operations, and merlin
-    communication *)
+(** System utilities for prune - TTY detection, dune operations, and project
+    validation *)
 
 (** {2 TTY and environment detection} *)
 
 val is_tty : unit -> bool
 (** [is_tty ()] checks if we're running in a TTY (for progress display). *)
-
-(** {2 Merlin communication} *)
-
-type merlin_mode = [ `Single | `Server ]
-
-val set_merlin_mode : merlin_mode -> unit
-(** [set_merlin_mode mode] sets the merlin execution mode (single or server). *)
-
-val call_merlin : string -> string -> string -> Jsont.json
-(** [call_merlin root_dir file_path query] runs merlin command on the given
-    file. *)
-
-val stop_merlin_server : string -> unit
-(** [stop_merlin_server root_dir] stops the merlin server in the given
-    directory. *)
 
 (** {2 Dune build operations} *)
 
