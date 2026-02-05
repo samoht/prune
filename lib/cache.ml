@@ -19,8 +19,8 @@ let err_ast_parse_failed file e =
 type diff_entry = { line_num : int; old_content : string; new_content : string }
 
 type ast_entry =
-  | Implementation of Ppxlib.structure
-  | Interface of Ppxlib.signature
+  | Implementation of Parsetree.structure
+  | Interface of Parsetree.signature
 
 type file_entry = {
   lines : string array;
@@ -146,11 +146,11 @@ let parse_ast_for_entry file entry =
   Location.init lexbuf file;
   try
     if Filename.check_suffix file ".mli" then (
-      let ast = Ppxlib.Parse.interface lexbuf in
+      let ast = Parse.interface lexbuf in
       entry.ast <- Some (Interface ast);
       Ok ())
     else
-      let ast = Ppxlib.Parse.implementation lexbuf in
+      let ast = Parse.implementation lexbuf in
       entry.ast <- Some (Implementation ast);
       Ok ()
   with

@@ -22,7 +22,6 @@ depends: [
   "re" {>= "1.9"}
   "tty"
   "vlog"
-  "ppxlib"
   "alcotest" {with-test}
   "odoc" {with-doc}
 ]

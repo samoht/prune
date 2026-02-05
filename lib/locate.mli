@@ -1,4 +1,4 @@
-(** AST-based location finding using ppxlib *)
+(** AST-based location finding using compiler-libs *)
 
 val enclosing_record :
   cache:Cache.t ->

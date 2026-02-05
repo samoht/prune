@@ -1,4 +1,14 @@
 (library
  (public_name prune)
  (name prune)
- (libraries jsont jsont.bytesrw bos logs fmt re ppxlib astring unix tty))
+ (libraries
+  jsont
+  jsont.bytesrw
+  bos
+  logs
+  fmt
+  re
+  compiler-libs.common
+  astring
+  unix
+  tty))

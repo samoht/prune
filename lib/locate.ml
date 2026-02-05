@@ -1,7 +1,7 @@
-(* AST-based location finding using ppxlib *)
+(* AST-based location finding using compiler-libs *)
 
 module T = Types
-open Ppxlib
+open Parsetree
 module Log = (val Logs.src_log (Logs.Src.create "prune.locate") : Logs.LOG)
 
 (* Type definitions *)
@@ -42,10 +42,10 @@ let err_no_enclosing_record = err "Could not find enclosing record"
 
 let rec longident_last = function
   | Longident.Lident s -> s
-  | Longident.Ldot (_, s) -> s
-  | Longident.Lapply (_, l) -> longident_last l
+  | Longident.Ldot (_, s) -> s.txt
+  | Longident.Lapply (_, l) -> longident_last l.txt
 
-let location_of_ppxlib_location file (loc : Location.t) : T.location =
+let location_of_loc file (loc : Location.t) : T.location =
   T.location file ~line:loc.loc_start.pos_lnum
     ~start_col:(loc.loc_start.pos_cnum - loc.loc_start.pos_bol)
     ~end_line:loc.loc_end.pos_lnum
@@ -99,25 +99,24 @@ let extend_field_bounds field_loc next_item_loc is_last_field =
 let field_in_type file type_decl ~line ~col ~field_name =
   match type_decl.ptype_kind with
   | Ptype_record label_decls ->
-      let record_loc = location_of_ppxlib_location file type_decl.ptype_loc in
+      let record_loc = location_of_loc file type_decl.ptype_loc in
       let total_fields = List.length label_decls in
 
       (* Use List.find_mapi to avoid array allocation *)
       let rec find_with_index i = function
         | [] -> None
         | ld :: rest ->
-            let name_loc = location_of_ppxlib_location file ld.pld_name.loc in
+            let name_loc = location_of_loc file ld.pld_name.loc in
             if
               ld.pld_name.txt = field_name
               && location_contains name_loc ~line ~col
             then
-              let full_loc = location_of_ppxlib_location file ld.pld_loc in
+              let full_loc = location_of_loc file ld.pld_loc in
               let next_loc =
                 if i = total_fields - 1 then record_loc
                 else
                   match rest with
-                  | next_ld :: _ ->
-                      location_of_ppxlib_location file next_ld.pld_loc
+                  | next_ld :: _ -> location_of_loc file next_ld.pld_loc
                   | [] -> record_loc
               in
               let extended =
@@ -139,24 +138,23 @@ let field_in_type file type_decl ~line ~col ~field_name =
 let field_in_record file expr ~line ~col ~field_name =
   match expr.pexp_desc with
   | Pexp_record (fields, _) ->
-      let record_loc = location_of_ppxlib_location file expr.pexp_loc in
+      let record_loc = location_of_loc file expr.pexp_loc in
       let total_fields = List.length fields in
 
       (* Use recursive function to avoid array allocation *)
       let rec find_with_index i = function
         | [] -> None
         | ((lid : Longident.t Asttypes.loc), expr) :: rest ->
-            let field_loc = location_of_ppxlib_location file lid.loc in
+            let field_loc = location_of_loc file lid.loc in
             let name = longident_last lid.txt in
             if name = field_name && location_contains field_loc ~line ~col then
-              let value_loc = location_of_ppxlib_location file expr.pexp_loc in
+              let value_loc = location_of_loc file expr.pexp_loc in
               let full_loc = T.merge field_loc value_loc in
               let next_loc =
                 if i = total_fields - 1 then record_loc
                 else
                   match rest with
-                  | (next_lid, _) :: _ ->
-                      location_of_ppxlib_location file next_lid.loc
+                  | (next_lid, _) :: _ -> location_of_loc file next_lid.loc
                   | [] -> record_loc
               in
               let extended =
@@ -179,7 +177,7 @@ let field_in_record file expr ~line ~col ~field_name =
 
 (* Get type keyword location *)
 let type_keyword_loc file item =
-  let item_loc = location_of_ppxlib_location file item.pstr_loc in
+  let item_loc = location_of_loc file item.pstr_loc in
   T.extend item_loc ~end_line:item_loc.start_line
     ~end_col:(item_loc.start_col + 4)
 (* "type" *)
@@ -188,7 +186,7 @@ let type_keyword_loc file item =
 let equals_loc file td =
   match (td.ptype_kind, td.ptype_manifest) with
   | Ptype_abstract, Some _ | Ptype_record _, _ | Ptype_variant _, _ ->
-      let name_loc = location_of_ppxlib_location file td.ptype_name.loc in
+      let name_loc = location_of_loc file td.ptype_name.loc in
       Some
         (T.location file ~line:name_loc.end_line
            ~start_col:(name_loc.end_col + 1) ~end_line:name_loc.end_line
@@ -217,27 +215,27 @@ let process_type_decl file item td loc =
   }
 
 let type_definition file ast ~line ~col =
-  let visitor =
-    object
-      inherit Ast_traverse.iter as super
-
-      method! structure_item item =
-        match item.pstr_desc with
-        | Pstr_type (_, type_decls) ->
-            List.iter
-              (fun td ->
-                let loc = location_of_ppxlib_location file td.ptype_loc in
-                if location_contains loc ~line ~col then
-                  let type_def_info = process_type_decl file item td loc in
-                  raise (Found_type_def type_def_info))
-              type_decls;
-            super#structure_item item
-        | _ -> super#structure_item item
-    end
+  let iter =
+    {
+      Ast_iterator.default_iterator with
+      structure_item =
+        (fun self item ->
+          (match item.pstr_desc with
+          | Pstr_type (_, type_decls) ->
+              List.iter
+                (fun td ->
+                  let loc = location_of_loc file td.ptype_loc in
+                  if location_contains loc ~line ~col then
+                    let type_def_info = process_type_decl file item td loc in
+                    raise (Found_type_def type_def_info))
+                type_decls
+          | _ -> ());
+          Ast_iterator.default_iterator.structure_item self item);
+    }
   in
 
   try
-    visitor#structure ast;
+    iter.structure iter ast;
     None
   with Found_type_def info -> Some info
 
@@ -246,7 +244,7 @@ let type_definition file ast ~line ~col =
 let structure_item_bounds file ast ~line ~col =
   List.find_map
     (fun item ->
-      let loc = location_of_ppxlib_location file item.pstr_loc in
+      let loc = location_of_loc file item.pstr_loc in
       if location_contains loc ~line ~col then
         (* Return just the item bounds - comments will be added by
            extend_location_with_comments *)
@@ -262,7 +260,7 @@ let rec value_in_module file module_type ~line ~col =
         (fun item ->
           match item.psig_desc with
           | Psig_value vd ->
-              let loc = location_of_ppxlib_location file vd.pval_loc in
+              let loc = location_of_loc file vd.pval_loc in
               if location_contains loc ~line ~col then
                 (* Found the value declaration *)
                 Some (to_full_lines loc)
@@ -279,7 +277,7 @@ let signature_item_bounds file ast ~line ~col =
       m "find_signature_item_bounds: looking for item at %s:%d:%d" file line col);
   List.find_map
     (fun item ->
-      let loc = location_of_ppxlib_location file item.psig_loc in
+      let loc = location_of_loc file item.psig_loc in
       Log.debug (fun m ->
           m "  Checking item at %d:%d-%d:%d" loc.start_line loc.start_col
             loc.end_line loc.end_col);
@@ -310,24 +308,26 @@ let field_info ~cache ~file ~line ~col ~field_name =
   match ast_entry ~cache file with
   | Error e -> Error e
   | Ok ast -> (
-      let visitor =
-        object
-          inherit Ast_traverse.iter as super
-
-          method! type_declaration td =
-            match field_in_type file td ~line ~col ~field_name with
-            | Some info -> raise (Found_field info)
-            | None -> super#type_declaration td
-
-          method! expression e =
-            match field_in_record file e ~line ~col ~field_name with
-            | Some info -> raise (Found_field info)
-            | None -> super#expression e
-        end
+      let iter =
+        {
+          Ast_iterator.default_iterator with
+          type_declaration =
+            (fun self td ->
+              (match field_in_type file td ~line ~col ~field_name with
+              | Some info -> raise (Found_field info)
+              | None -> ());
+              Ast_iterator.default_iterator.type_declaration self td);
+          expr =
+            (fun self e ->
+              (match field_in_record file e ~line ~col ~field_name with
+              | Some info -> raise (Found_field info)
+              | None -> ());
+              Ast_iterator.default_iterator.expr self e);
+        }
       in
 
       try
-        visitor#structure ast;
+        iter.structure iter ast;
         err_field_not_found
       with Found_field info -> Ok info)
 
@@ -362,18 +362,19 @@ let value_binding ~cache ~file ~line ~col =
   match ast_entry ~cache file with
   | Error e -> Error e
   | Ok ast -> (
-      let visitor =
-        object
-          inherit Ast_traverse.iter as super
-
-          method! value_binding vb =
-            let loc = location_of_ppxlib_location file vb.pvb_loc in
-            if location_contains loc ~line ~col then raise (Found_location loc)
-            else super#value_binding vb
-        end
+      let iter =
+        {
+          Ast_iterator.default_iterator with
+          value_binding =
+            (fun self vb ->
+              let loc = location_of_loc file vb.pvb_loc in
+              if location_contains loc ~line ~col then
+                raise (Found_location loc)
+              else Ast_iterator.default_iterator.value_binding self vb);
+        }
       in
       try
-        visitor#structure ast;
+        iter.structure iter ast;
         err_no_value_binding
       with Found_location loc ->
         Ok (Comments.extend_location_with_comments cache file loc))
@@ -383,30 +384,30 @@ let enclosing_record ~cache ~file ~line ~col =
   | Error e -> Error e
   | Ok ast -> (
       let innermost = ref None in
-      let visitor =
-        object
-          inherit Ast_traverse.iter as super
-
-          method! expression e =
-            match e.pexp_desc with
-            | Pexp_record (_, _) ->
-                let loc = location_of_ppxlib_location file e.pexp_loc in
-                (if location_contains loc ~line ~col then
-                   (* Update innermost if this record is smaller/more
-                      specific *)
-                   match !innermost with
-                   | None -> innermost := Some loc
-                   | Some prev_loc ->
-                       (* If this location is contained within the previous one,
-                          it's more specific *)
-                       if is_loc1_contained_in_loc2 loc prev_loc then
-                         innermost := Some loc);
-                super#expression e
-            | _ -> super#expression e
-        end
+      let iter =
+        {
+          Ast_iterator.default_iterator with
+          expr =
+            (fun self e ->
+              (match e.pexp_desc with
+              | Pexp_record (_, _) -> (
+                  let loc = location_of_loc file e.pexp_loc in
+                  if location_contains loc ~line ~col then
+                    (* Update innermost if this record is smaller/more
+                       specific *)
+                    match !innermost with
+                    | None -> innermost := Some loc
+                    | Some prev_loc ->
+                        (* If this location is contained within the previous
+                           one, it's more specific *)
+                        if is_loc1_contained_in_loc2 loc prev_loc then
+                          innermost := Some loc)
+              | _ -> ());
+              Ast_iterator.default_iterator.expr self e);
+        }
       in
 
-      visitor#structure ast;
+      iter.structure iter ast;
       match !innermost with
       | None -> err_no_enclosing_record
       | Some loc -> Ok loc)

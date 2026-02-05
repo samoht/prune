@@ -56,8 +56,8 @@ val is_file_empty : t -> string -> bool
 (** {2 AST caching} *)
 
 type ast_entry =
-  | Implementation of Ppxlib.structure
-  | Interface of Ppxlib.signature  (** AST representation for cached files *)
+  | Implementation of Parsetree.structure
+  | Interface of Parsetree.signature  (** AST representation for cached files *)
 
 val ast : t -> string -> (ast_entry, [ `Msg of string ]) result
 (** [ast cache file] returns the parsed AST for [file], parsing and caching it

@@ -29,5 +29,4 @@ merlin for accurate symbol analysis across dune projects.")
   (re (>= 1.9))
   tty
   vlog
-  ppxlib
   (alcotest :with-test)))
