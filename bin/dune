@@ -1,4 +1,4 @@
 (executable
  (public_name prune)
  (name main)
- (libraries prune cmdliner vlog ocaml-build-info))
+ (libraries prune cmdliner vlog monopam-info))
