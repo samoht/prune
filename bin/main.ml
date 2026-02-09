@@ -343,7 +343,7 @@ let cmd =
       `P "$(mname)-clean(1), $(mname)-doctor(1)";
     ]
   in
-  let info = Cmd.info "prune" ~version:Monopam_info.version ~doc ~sdocs ~man in
+  let info = Cmd.info "prune" ~version:Mono_info.version ~doc ~sdocs ~man in
   (* Set clean as the default command *)
   let default = Term.(ret (const (`Help (`Pager, None)))) in
   Cmd.group info ~default [ clean_cmd; doctor_cmd; show_cmd ]
